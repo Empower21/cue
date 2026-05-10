@@ -49,3 +49,9 @@ impl Default for VadGate {
         Self::new()
     }
 }
+
+// SAFETY: VadGate is always accessed through Arc<Mutex<VadGate>>, so
+// concurrent access is prevented by the Mutex. The inner `Vad` wraps a
+// single-threaded C library (libfvad), but we never access it from two
+// threads simultaneously.
+unsafe impl Send for VadGate {}
