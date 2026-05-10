@@ -1,13 +1,10 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { ModeSelector, type Mode } from './ModeSelector';
 import { useAudioSignal } from '../hooks/useTauriEvents';
+import { TranscriptStream } from './TranscriptStream';
 
-interface OverlayPanelProps {
-  children?: ReactNode;
-}
-
-export function OverlayPanel({ children }: OverlayPanelProps) {
+export function OverlayPanel() {
   const [mode, setMode] = useState<Mode>('listen');
   const [running, setRunning] = useState(false);
   const { mic, system } = useAudioSignal();
@@ -47,9 +44,11 @@ export function OverlayPanel({ children }: OverlayPanelProps) {
       </div>
 
       <main className="flex-1 overflow-y-auto py-3 text-sm text-cue-text">
-        {children ?? (
+        {running ? (
+          <TranscriptStream />
+        ) : (
           <div className="flex h-full items-center justify-center text-center text-xs text-cue-muted">
-            <div>Audio test ready. Transcripts in Task 8.</div>
+            <div>Press Start to begin transcription.</div>
           </div>
         )}
       </main>
