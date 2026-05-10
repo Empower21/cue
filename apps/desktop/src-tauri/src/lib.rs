@@ -14,6 +14,8 @@ pub fn run() {
                 .ok_or_else(|| anyhow::anyhow!("main window missing"))?;
 
             overlay::window::configure_overlay(&main)?;
+            overlay::hotkeys::register_default_hotkey(app.handle())?;
+
             log::info!("cue starting up");
             Ok(())
         })
