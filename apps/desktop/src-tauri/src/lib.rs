@@ -1,6 +1,7 @@
 mod audio;
 mod overlay;
 mod session;
+mod stt;
 
 use tauri::Manager;
 
