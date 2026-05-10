@@ -1,0 +1,49 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0.0",
+  "productName": "cue",
+  "version": "0.1.0",
+  "identifier": "io.cue.app",
+  "build": {
+    "beforeDevCommand": "pnpm vite:dev",
+    "beforeBuildCommand": "pnpm vite:build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "cue",
+        "width": 360,
+        "height": 480,
+        "minWidth": 280,
+        "minHeight": 360,
+        "resizable": true,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "shadow": false,
+        "visible": true,
+        "x": 100,
+        "y": 100
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg", "msi"],
+    "icon": ["icons/icon.png"],
+    "category": "Productivity",
+    "shortDescription": "AI co-pilot for interviews and meetings",
+    "longDescription": "Real-time notes and contextual answers in a minimalist overlay.",
+    "copyright": "© 2026 the cue contributors"
+  },
+  "plugins": {
+    "global-shortcut": {}
+  }
+}
