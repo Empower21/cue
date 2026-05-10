@@ -1,0 +1,13 @@
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# Vercel
+.vercel/
+
+# Env (apps/web specific)
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
