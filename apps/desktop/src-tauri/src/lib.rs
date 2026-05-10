@@ -1,5 +1,6 @@
 mod audio;
 mod overlay;
+mod session;
 
 use tauri::Manager;
 
@@ -9,6 +10,11 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .manage(session::SessionState::new())
+        .invoke_handler(tauri::generate_handler![
+            session::start_capture,
+            session::stop_capture,
+        ])
         .setup(|app| {
             let main = app
                 .get_webview_window("main")
