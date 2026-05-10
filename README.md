@@ -2,7 +2,9 @@
 
 AI co-pilot for interview prep, study sessions, and meeting note-taking. Runs as a transparent desktop overlay on macOS 14.4+ and Windows 10 2004+.
 
-**Status:** alpha — Foundation complete. Audio + LLM in progress.
+**Live:** https://cue-web-five.vercel.app
+
+**Status:** alpha — Marketing site live, foundation scaffolding committed, Tauri runtime in progress.
 
 ## Features (target MVP)
 
