@@ -1,9 +1,11 @@
 import type { VercelConfig } from '@vercel/config/v1';
 
+// Vercel project root is `apps/web/` (where this file lives). Vercel's pnpm-
+// workspace auto-detection walks up to find `pnpm-workspace.yaml` at the repo
+// root and installs the full workspace, so `@cue/shared` is wired up at build.
+// We only override what the Next.js framework preset doesn't already handle:
+// redirects + cache headers.
 export const config: VercelConfig = {
-  buildCommand: 'pnpm --filter @cue/web build',
-  outputDirectory: 'apps/web/.next',
-  installCommand: 'pnpm install --frozen-lockfile',
   framework: 'nextjs',
   redirects: [
     { source: '/install', destination: '/download', permanent: false },
