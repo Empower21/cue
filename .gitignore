@@ -16,8 +16,6 @@ src-tauri/Cargo.lock
 .vscode/
 .idea/
 *.swp
-.DS_Store
-Thumbs.db
 
 # Env
 .env
