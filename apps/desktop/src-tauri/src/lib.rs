@@ -1,3 +1,4 @@
+mod audio;
 mod overlay;
 
 use tauri::Manager;
