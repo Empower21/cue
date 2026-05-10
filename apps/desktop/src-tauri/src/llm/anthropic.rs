@@ -1,0 +1,174 @@
+//! Claude Sonnet 4.6 streaming via the Messages API with 4-tier prompt cache.
+
+use crate::llm::{prompts, LlmEvent, LlmProvider, LlmRequest};
+use async_trait::async_trait;
+use eventsource_stream::Eventsource;
+use futures_util::StreamExt;
+use serde_json::{json, Value};
+use tokio::sync::mpsc;
+
+pub const MODEL: &str = "claude-sonnet-4-6";
+pub const ENDPOINT: &str = "https://api.anthropic.com/v1/messages";
+pub const ANTHROPIC_VERSION: &str = "2023-06-01";
+
+pub struct AnthropicProvider {
+    pub api_key: String,
+    pub max_tokens: u32,
+}
+
+impl AnthropicProvider {
+    pub fn new(api_key: String) -> Self {
+        Self {
+            api_key,
+            max_tokens: 1024,
+        }
+    }
+}
+
+#[async_trait]
+impl LlmProvider for AnthropicProvider {
+    async fn stream(
+        &self,
+        request: LlmRequest,
+    ) -> anyhow::Result<mpsc::Receiver<LlmEvent>> {
+        let (tx, rx) = mpsc::channel::<LlmEvent>(128);
+
+        let payload = build_payload(&request, self.max_tokens);
+        let api_key = self.api_key.clone();
+
+        tokio::spawn(async move {
+            let client = reqwest::Client::new();
+            let resp = match client
+                .post(ENDPOINT)
+                .header("x-api-key", &api_key)
+                .header("anthropic-version", ANTHROPIC_VERSION)
+                .header(
+                    "anthropic-beta",
+                    // Enables prompt caching for ephemeral cache_control blocks.
+                    "prompt-caching-2024-07-31",
+                )
+                .header("content-type", "application/json")
+                .json(&payload)
+                .send()
+                .await
+            {
+                Ok(r) => r,
+                Err(e) => {
+                    let _ = tx.send(LlmEvent::Error { reason: format!("connect: {e}") }).await;
+                    return;
+                }
+            };
+
+            if !resp.status().is_success() {
+                let status = resp.status();
+                let body = resp.text().await.unwrap_or_default();
+                let _ = tx.send(LlmEvent::Error {
+                    reason: format!("{status}: {body}"),
+                }).await;
+                return;
+            }
+
+            let mut stream = resp.bytes_stream().eventsource();
+            let mut input_tokens = 0u32;
+            let mut output_tokens = 0u32;
+
+            while let Some(event) = stream.next().await {
+                let Ok(ev) = event else {
+                    let _ = tx.send(LlmEvent::Error {
+                        reason: "sse parse error".into(),
+                    }).await;
+                    break;
+                };
+                let parsed: Value = match serde_json::from_str(&ev.data) {
+                    Ok(v) => v,
+                    Err(_) => continue,
+                };
+                match parsed.get("type").and_then(|s| s.as_str()) {
+                    Some("content_block_delta") => {
+                        if let Some(delta_text) = parsed
+                            .get("delta")
+                            .and_then(|d| d.get("text"))
+                            .and_then(|t| t.as_str())
+                        {
+                            if tx.send(LlmEvent::Token { text: delta_text.to_string() }).await.is_err() {
+                                return;
+                            }
+                        }
+                    }
+                    Some("message_delta") => {
+                        if let Some(usage) = parsed.get("usage") {
+                            if let Some(it) = usage.get("input_tokens").and_then(|v| v.as_u64()) {
+                                input_tokens = it as u32;
+                            }
+                            if let Some(ot) = usage.get("output_tokens").and_then(|v| v.as_u64()) {
+                                output_tokens = ot as u32;
+                            }
+                        }
+                    }
+                    Some("message_stop") => {
+                        let stop_reason = parsed
+                            .get("stop_reason")
+                            .and_then(|s| s.as_str())
+                            .unwrap_or("end_turn")
+                            .to_string();
+                        let _ = tx.send(LlmEvent::Done {
+                            stop_reason,
+                            input_tokens,
+                            output_tokens,
+                        }).await;
+                        return;
+                    }
+                    _ => {}
+                }
+            }
+        });
+
+        Ok(rx)
+    }
+}
+
+fn build_payload(req: &LlmRequest, max_tokens: u32) -> Value {
+    // L1: system prompt (1h cache)
+    // L2: user context block (JD + resume + role) (1h cache)
+    // L3: rolling transcript (5min cache)
+    // L4: live trigger (no cache)
+    let mut system_blocks = vec![json!({
+        "type": "text",
+        "text": prompts::system_prompt(req.mode),
+        "cache_control": { "type": "ephemeral" }
+    })];
+
+    let context_block = prompts::user_context_block(req);
+    if !context_block.is_empty() {
+        system_blocks.push(json!({
+            "type": "text",
+            "text": context_block,
+            "cache_control": { "type": "ephemeral" }
+        }));
+    }
+
+    let mut user_content = Vec::new();
+    let rolling = prompts::rolling_transcript(req);
+    if !rolling.is_empty() {
+        user_content.push(json!({
+            "type": "text",
+            "text": format!("## Recent transcript\n{rolling}"),
+            "cache_control": { "type": "ephemeral" }
+        }));
+    }
+    user_content.push(json!({
+        "type": "text",
+        "text": format!("## Trigger\n{}", req.trigger)
+    }));
+
+    json!({
+        "model": MODEL,
+        "max_tokens": max_tokens,
+        "stream": true,
+        "system": system_blocks,
+        "messages": [{
+            "role": "user",
+            "content": user_content
+        }]
+    })
+}
