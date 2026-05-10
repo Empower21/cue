@@ -50,6 +50,13 @@ url = "2.5"
 objc2 = "0.5"
 objc2-app-kit = { version = "0.2", features = ["NSWindow"] }
 objc2-foundation = "0.2"
+# Audio capture additions (Step 3.1 — P2-T3):
+# screencapturekit 0.3 does not exist; latest is 2.0.0 — pinned here.
+# coreaudio-rs plan asked for 0.12; latest is 0.14.2 — pinned here.
+# core-foundation 0.10 matches plan exactly.
+core-foundation = "0.10"
+coreaudio-rs = "0.14"
+screencapturekit = "2.0"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { version = "0.58", features = [

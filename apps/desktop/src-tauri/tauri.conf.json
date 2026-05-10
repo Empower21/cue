@@ -37,7 +37,7 @@
   "bundle": {
     "active": true,
     "targets": ["dmg", "msi"],
-    "icon": ["icons/icon.png"],
+    "icon": ["icons/icon.png", "icons/icon.ico"],
     "category": "Productivity",
     "shortDescription": "AI co-pilot for interviews and meetings",
     "longDescription": "Real-time notes and contextual answers in a minimalist overlay.",
