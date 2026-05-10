@@ -1,4 +1,6 @@
 mod audio;
+mod config;
+mod llm;
 mod overlay;
 mod session;
 mod stt;
@@ -15,6 +17,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             session::start_capture,
             session::stop_capture,
+            session::save_config,
+            session::load_config,
         ])
         .setup(|app| {
             let main = app
