@@ -104,3 +104,52 @@ export function useTranscript() {
 
   return utterances;
 }
+
+// ---------------------------------------------------------------------------
+// Answer streaming
+// ---------------------------------------------------------------------------
+
+interface AnswerEvent {
+  kind: 'token' | 'done' | 'error' | 'fallback';
+  text?: string;
+  reason?: string;
+}
+
+export interface StreamingAnswer {
+  text: string;
+  done: boolean;
+  error?: string;
+  fallback: boolean;
+}
+
+export function useAnswer() {
+  const [answer, setAnswer] = useState<StreamingAnswer>({ text: '', done: true, fallback: false });
+
+  useEffect(() => {
+    const unlisten = listen<AnswerEvent>('answer_event', ({ payload }) => {
+      setAnswer((prev) => {
+        if (payload.kind === 'token' && payload.text) {
+          return { ...prev, text: prev.text + payload.text, done: false };
+        }
+        if (payload.kind === 'done') {
+          return { ...prev, done: true };
+        }
+        if (payload.kind === 'fallback') {
+          return { ...prev, fallback: true };
+        }
+        if (payload.kind === 'error') {
+          return { ...prev, done: true, error: payload.reason ?? 'unknown' };
+        }
+        return prev;
+      });
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
+
+  // Reset is exposed so callers can clear before a new ask.
+  const reset = () => setAnswer({ text: '', done: true, fallback: false });
+
+  return { answer, reset };
+}
