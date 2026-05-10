@@ -1,0 +1,6 @@
+[env]
+# Placeholder values used during `cargo check` / local dev builds.
+# Shell env overrides these (force = false means shell env wins).
+# Real release builds inject actual secrets via GitHub Actions repo secrets.
+CUE_ANTHROPIC_KEY = { value = "set-at-real-build", force = false }
+CUE_HF_TOKEN = { value = "set-at-real-build", force = false }

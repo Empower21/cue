@@ -2,6 +2,7 @@ mod audio;
 mod config;
 mod llm;
 mod overlay;
+mod question_detector;
 mod session;
 mod stt;
 
@@ -19,6 +20,7 @@ pub fn run() {
             session::stop_capture,
             session::save_config,
             session::load_config,
+            session::ask,
         ])
         .setup(|app| {
             let main = app

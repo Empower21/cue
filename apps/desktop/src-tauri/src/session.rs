@@ -263,3 +263,249 @@ pub async fn save_config(config: config::Config) -> Result<(), String> {
 pub async fn load_config() -> Result<config::Config, String> {
     config::load().map_err(|e| e.to_string())
 }
+
+// ---------------------------------------------------------------------------
+// T11: ask command + Anthropic-with-HF-fallback orchestrator
+// ---------------------------------------------------------------------------
+
+use crate::llm::{
+    anthropic::AnthropicProvider, huggingface::HuggingFaceProvider, LlmEvent, LlmProvider,
+    LlmRequest, Mode,
+};
+
+const ANTHROPIC_KEY: &str = env!(
+    "CUE_ANTHROPIC_KEY",
+    "set CUE_ANTHROPIC_KEY at build time (see DEV-SETUP.md)"
+);
+const HF_TOKEN: &str = env!("CUE_HF_TOKEN", "set CUE_HF_TOKEN at build time");
+const FALLBACK_TIMEOUT_MS: u64 = 8_000;
+
+#[derive(Clone, Serialize)]
+pub struct AnswerEvent {
+    pub kind: String, // "token" | "done" | "error" | "fallback"
+    pub text: Option<String>,
+    pub reason: Option<String>,
+}
+
+#[tauri::command]
+pub async fn ask<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, SessionState>,
+    mode: String,
+    trigger: String,
+) -> Result<(), String> {
+    let cfg = config::load().map_err(|e| e.to_string())?;
+    let mode_enum = match mode.as_str() {
+        "interview" => Mode::Interview,
+        "study" => Mode::Study,
+        _ => Mode::Meeting,
+    };
+
+    // Read the rolling transcript buffer (last ~10 turns) for L3 cache tier.
+    // Lock is scoped into a non-async block — never held across an .await.
+    let transcript_window: Vec<TranscriptTurn> = {
+        match state.inner.lock().as_ref() {
+            Some(s) => s.transcript_buffer.lock().iter().cloned().collect(),
+            None => Vec::new(),
+        }
+    }; // both guards dropped here
+
+    let request = LlmRequest {
+        mode: mode_enum,
+        job_description: cfg.job_description.clone(),
+        resume: cfg.resume.clone(),
+        role_context: cfg.role_context.clone(),
+        transcript_window,
+        trigger,
+    };
+
+    let anthropic_key = cfg
+        .anthropic_override_key
+        .clone()
+        .unwrap_or_else(|| ANTHROPIC_KEY.to_string());
+    let primary = AnthropicProvider::new(anthropic_key);
+
+    let app_for_orchestrator = app.clone();
+    let request_for_fallback = request.clone();
+
+    tokio::spawn(async move {
+        match primary.stream(request).await {
+            Ok(rx) => {
+                let outcome = forward_stream_with_first_token_timeout(
+                    app_for_orchestrator.clone(),
+                    rx,
+                    std::time::Duration::from_millis(FALLBACK_TIMEOUT_MS),
+                )
+                .await;
+                if matches!(outcome, StreamOutcome::Timeout | StreamOutcome::ImmediateError) {
+                    fallback(app_for_orchestrator, request_for_fallback).await;
+                }
+            }
+            Err(e) => {
+                log::warn!("Anthropic stream() returned err: {e}");
+                fallback(app_for_orchestrator, request_for_fallback).await;
+            }
+        }
+    });
+
+    Ok(())
+}
+
+/// What happened to the primary stream — used to decide if we fall back.
+enum StreamOutcome {
+    /// Stream produced at least one token, then ended (Done or Error).
+    /// Whether it ended cleanly or not, we do NOT fall back — we already
+    /// served the user something.
+    Streamed,
+    /// No token arrived within the timeout. Fall back.
+    Timeout,
+    /// Stream errored before delivering any tokens. Fall back.
+    ImmediateError,
+}
+
+async fn forward_stream_with_first_token_timeout<R: Runtime>(
+    app: AppHandle<R>,
+    mut rx: mpsc::Receiver<LlmEvent>,
+    first_token_timeout: std::time::Duration,
+) -> StreamOutcome {
+    // Wait for the first event with a timeout. If we don't see ANY event
+    // (token, error, done) within the window, treat as timeout and fall back.
+    let first = match tokio::time::timeout(first_token_timeout, rx.recv()).await {
+        Ok(Some(ev)) => ev,
+        Ok(None) => return StreamOutcome::ImmediateError, // channel closed without events
+        Err(_) => return StreamOutcome::Timeout,
+    };
+
+    // Handle the first event. If it's an error before any token, fall back.
+    let mut delivered_any_token = false;
+    match first {
+        LlmEvent::Token { text } => {
+            delivered_any_token = true;
+            let _ = app.emit(
+                "answer_event",
+                AnswerEvent { kind: "token".into(), text: Some(text), reason: None },
+            );
+        }
+        LlmEvent::Done { stop_reason, input_tokens, output_tokens } => {
+            // Done with zero tokens emitted is a degenerate but legal outcome —
+            // treat as a successful empty response, do not fall back.
+            let _ = app.emit(
+                "answer_event",
+                AnswerEvent {
+                    kind: "done".into(),
+                    text: Some(format!(
+                        "stop={stop_reason} in={input_tokens} out={output_tokens}"
+                    )),
+                    reason: None,
+                },
+            );
+            return StreamOutcome::Streamed;
+        }
+        LlmEvent::Error { reason } => {
+            let _ = app.emit(
+                "answer_event",
+                AnswerEvent { kind: "error".into(), text: None, reason: Some(reason) },
+            );
+            return StreamOutcome::ImmediateError;
+        }
+    }
+
+    // Keep forwarding the rest of the stream (no further timeout applies — once
+    // the stream is producing tokens we let it run to completion).
+    while let Some(ev) = rx.recv().await {
+        match ev {
+            LlmEvent::Token { text } => {
+                delivered_any_token = true;
+                let _ = app.emit(
+                    "answer_event",
+                    AnswerEvent { kind: "token".into(), text: Some(text), reason: None },
+                );
+            }
+            LlmEvent::Done { stop_reason, input_tokens, output_tokens } => {
+                let _ = app.emit(
+                    "answer_event",
+                    AnswerEvent {
+                        kind: "done".into(),
+                        text: Some(format!(
+                            "stop={stop_reason} in={input_tokens} out={output_tokens}"
+                        )),
+                        reason: None,
+                    },
+                );
+                return StreamOutcome::Streamed;
+            }
+            LlmEvent::Error { reason } => {
+                let _ = app.emit(
+                    "answer_event",
+                    AnswerEvent { kind: "error".into(), text: None, reason: Some(reason) },
+                );
+                // Mid-stream error — already showed user partial content, do not
+                // restart with fallback (would produce duplicate output).
+                return StreamOutcome::Streamed;
+            }
+        }
+    }
+
+    if delivered_any_token { StreamOutcome::Streamed } else { StreamOutcome::ImmediateError }
+}
+
+/// Forward every remaining event from `rx` to the frontend verbatim.
+async fn forward_stream<R: Runtime>(app: AppHandle<R>, mut rx: mpsc::Receiver<LlmEvent>) {
+    while let Some(ev) = rx.recv().await {
+        match ev {
+            LlmEvent::Token { text } => {
+                let _ = app.emit(
+                    "answer_event",
+                    AnswerEvent { kind: "token".into(), text: Some(text), reason: None },
+                );
+            }
+            LlmEvent::Done { stop_reason, input_tokens, output_tokens } => {
+                let _ = app.emit(
+                    "answer_event",
+                    AnswerEvent {
+                        kind: "done".into(),
+                        text: Some(format!(
+                            "stop={stop_reason} in={input_tokens} out={output_tokens}"
+                        )),
+                        reason: None,
+                    },
+                );
+                return;
+            }
+            LlmEvent::Error { reason } => {
+                let _ = app.emit(
+                    "answer_event",
+                    AnswerEvent { kind: "error".into(), text: None, reason: Some(reason) },
+                );
+                return;
+            }
+        }
+    }
+}
+
+async fn fallback<R: Runtime>(app: AppHandle<R>, request: LlmRequest) {
+    let _ = app.emit(
+        "answer_event",
+        AnswerEvent {
+            kind: "fallback".into(),
+            text: Some("Anthropic unavailable — falling back to HuggingFace Mistral-7B".into()),
+            reason: None,
+        },
+    );
+    let provider = HuggingFaceProvider::new(HF_TOKEN.to_string());
+    match provider.stream(request).await {
+        Ok(rx) => {
+            forward_stream(app, rx).await;
+        }
+        Err(e) => {
+            let _ = app.emit(
+                "answer_event",
+                AnswerEvent {
+                    kind: "error".into(),
+                    text: None,
+                    reason: Some(format!("fallback failed: {e}")),
+                },
+            );
+        }
+    }
+}
