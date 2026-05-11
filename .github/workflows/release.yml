@@ -82,16 +82,17 @@ jobs:
           # the user-provided override key in Settings is required).
           CUE_ANTHROPIC_KEY: ""
           CUE_HF_TOKEN: ""
-          # Tauri updater signing key (set via repo secret when ready):
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # macOS notarization secrets (set via repo secrets when ready):
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # NOTE: Tauri updater and macOS code-signing/notarization env vars
+          # are intentionally NOT set here. tauri-action checks for their
+          # presence in the environment — when undefined, it skips signing
+          # entirely and produces an unsigned bundle. When `${{ secrets.X }}`
+          # is referenced but the underlying secret is missing, GitHub
+          # substitutes an empty string, which the action treats as "defined
+          # but invalid" and fails at `security import`.
+          # Re-add these lines when a code-signing cert is acquired:
+          #   TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD,
+          #   APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD,
+          #   APPLE_SIGNING_IDENTITY, APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID
         with:
           projectPath: apps/desktop
           args: --target ${{ matrix.target }}
