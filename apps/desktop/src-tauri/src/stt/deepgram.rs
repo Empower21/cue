@@ -36,13 +36,15 @@ impl SttProvider for DeepgramProvider {
             config.model, config.language
         );
 
+        log::info!("deepgram: connecting channel={:?} url={}", channel, &url);
         let mut req = url.into_client_request()?;
         req.headers_mut().insert(
             "Authorization",
             HeaderValue::from_str(&format!("Token {}", config.api_key))?,
         );
 
-        let (ws, _resp) = tokio_tungstenite::connect_async(req).await?;
+        let (ws, resp) = tokio_tungstenite::connect_async(req).await?;
+        log::info!("deepgram: ws connected channel={:?} status={}", channel, resp.status());
 
         let (event_tx, event_rx) = mpsc::channel::<SttEvent>(256);
         let (frame_tx, frame_rx) = mpsc::channel::<Vec<u8>>(256);
@@ -95,11 +97,16 @@ async fn driver_task(
     event_tx: mpsc::Sender<SttEvent>,
     channel: AudioChannel,
 ) {
+    use std::time::Duration;
+    // Deepgram closes the WebSocket if no data arrives within ~10s. Send a
+    // KeepAlive control message every 5s during silence to hold the connection.
+    let mut keepalive_tick = tokio::time::interval(Duration::from_secs(5));
+    keepalive_tick.tick().await; // consume immediate first tick
+
     loop {
         tokio::select! {
             // Outgoing audio.
             Some(bytes) = frame_rx.recv() => {
-                // tungstenite 0.24 Message::Binary takes Vec<u8> (not bytes::Bytes).
                 let msg = Message::Binary(bytes);
                 if let Err(e) = ws.send(msg).await {
                     let _ = event_tx.send(SttEvent::Error {
@@ -109,19 +116,35 @@ async fn driver_task(
                     break;
                 }
             }
+            // KeepAlive heartbeat — fires every 5s. Resets when we send audio
+            // because tokio::select! polls receivers in order each iteration.
+            _ = keepalive_tick.tick() => {
+                let ka = Message::Text(r#"{"type":"KeepAlive"}"#.to_string());
+                if let Err(e) = ws.send(ka).await {
+                    log::warn!("deepgram[{:?}] keepalive failed: {e}", channel);
+                    break;
+                }
+                log::debug!("deepgram[{:?}] keepalive sent", channel);
+            }
             // Incoming Deepgram messages.
             Some(msg) = ws.next() => {
                 match msg {
                     Ok(Message::Text(json)) => {
+                        log::debug!("deepgram[{:?}] rx: {}", channel, &json);
                         if let Some(ev) = parse_deepgram_message(&json, channel) {
+                            log::info!("deepgram[{:?}] event: {:?}", channel, &ev);
                             if event_tx.send(ev).await.is_err() {
                                 break;
                             }
                         }
                     }
-                    Ok(Message::Close(_)) => break,
+                    Ok(Message::Close(c)) => {
+                        log::warn!("deepgram[{:?}] close: {:?}", channel, c);
+                        break;
+                    }
                     Ok(_) => {} // ignore ping/pong/binary
                     Err(e) => {
+                        log::error!("deepgram[{:?}] ws error: {e}", channel);
                         let _ = event_tx.send(SttEvent::Error {
                             reason: format!("ws: {e}"),
                             channel,

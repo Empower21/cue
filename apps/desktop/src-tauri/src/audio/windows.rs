@@ -52,9 +52,11 @@ impl AudioCaptureSession for WindowsCapture {
         let mic_device = host
             .default_input_device()
             .ok_or_else(|| CaptureError::DeviceNotFound("default input device".into()))?;
+        log::info!("audio: mic device = {}", mic_device.name().unwrap_or_else(|_| "<unknown>".into()));
         let mic_config = mic_device
             .default_input_config()
             .map_err(|e| CaptureError::Backend(format!("mic default_input_config: {e}")))?;
+        log::info!("audio: mic config = {:?}", mic_config);
         let mic_stream = build_stream(
             &mic_device,
             mic_config.into(),
@@ -71,9 +73,11 @@ impl AudioCaptureSession for WindowsCapture {
         let sys_device = host
             .default_output_device()
             .ok_or_else(|| CaptureError::DeviceNotFound("default output device".into()))?;
+        log::info!("audio: loopback device = {}", sys_device.name().unwrap_or_else(|_| "<unknown>".into()));
         let sys_config = sys_device
             .default_output_config()
             .map_err(|e| CaptureError::Backend(format!("system default_output_config: {e}")))?;
+        log::info!("audio: loopback config = {:?}", sys_config);
         let sys_stream = build_stream(
             &sys_device,
             sys_config.into(),

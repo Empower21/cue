@@ -152,10 +152,13 @@ pub async fn start_capture<R: Runtime>(
     });
 
     // Per-channel STT pumps: receive raw PCM and call submit() — no lock held.
+    // On submit error (Deepgram channel closed), break out so we don't flood
+    // the log; the WebSocket is dead and won't recover within this pump.
     tokio::spawn(async move {
         while let Some(samples) = mic_frame_rx.recv().await {
             if let Err(e) = mic_session.submit(&samples).await {
-                log::warn!("mic stt submit failed: {e}");
+                log::warn!("mic stt submit failed, closing pump: {e}");
+                break;
             }
         }
         log::info!("mic STT pump exiting");
@@ -163,7 +166,8 @@ pub async fn start_capture<R: Runtime>(
     tokio::spawn(async move {
         while let Some(samples) = sys_frame_rx.recv().await {
             if let Err(e) = sys_session.submit(&samples).await {
-                log::warn!("sys stt submit failed: {e}");
+                log::warn!("sys stt submit failed, closing pump: {e}");
+                break;
             }
         }
         log::info!("sys STT pump exiting");

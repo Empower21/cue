@@ -6,10 +6,14 @@ export default {
     extend: {
       colors: {
         cue: {
-          bg: 'rgba(20, 20, 24, 0.85)',
+          // Light theme — solid off-white (window no longer transparent).
+          bg: '#f8f8fa',
+          surface: '#ffffff',
           accent: '#7c5cff',
-          text: '#e8e8ec',
-          muted: '#9a9aa3',
+          accentMuted: '#a596ff',
+          text: '#1c1c1e',
+          muted: '#6e6e73',
+          subtle: '#d1d1d6',
         },
       },
       fontFamily: {

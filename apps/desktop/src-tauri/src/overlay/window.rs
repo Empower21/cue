@@ -51,26 +51,12 @@ fn apply_macos_collection_behavior<R: Runtime>(window: &WebviewWindow<R>) -> any
 }
 
 #[cfg(target_os = "windows")]
-fn apply_windows_extended_style<R: Runtime>(window: &WebviewWindow<R>) -> anyhow::Result<()> {
-    use windows::Win32::Foundation::HWND;
-    use windows::Win32::UI::WindowsAndMessaging::{
-        GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_TOOLWINDOW,
-    };
-
-    let hwnd = HWND(window.hwnd()?.0 as *mut _);
-    if hwnd.0.is_null() {
-        anyhow::bail!("hwnd was null");
-    }
-
-    // WS_EX_TOOLWINDOW removes the window from the taskbar and Alt-Tab.
-    // (skip_taskbar already does this on most builds; we set it explicitly
-    // for older Windows 10 versions where Tauri's flag is unreliable.)
-    unsafe {
-        let current = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, current | WS_EX_TOOLWINDOW.0 as isize);
-    }
-
-    log::info!("Windows extended style applied (WS_EX_TOOLWINDOW)");
+fn apply_windows_extended_style<R: Runtime>(_window: &WebviewWindow<R>) -> anyhow::Result<()> {
+    // WS_EX_TOOLWINDOW was previously applied here, but it breaks caption-drag
+    // (WM_NCLBUTTONDOWN/HTCAPTION) on borderless windows because tool windows
+    // have non-standard non-client geometry. skipTaskbar in tauri.conf.json
+    // already handles taskbar + Alt-Tab hiding on modern Windows.
+    log::info!("Windows extended style: WS_EX_TOOLWINDOW intentionally skipped (drag compatibility)");
     Ok(())
 }
 

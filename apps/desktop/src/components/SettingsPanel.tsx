@@ -79,7 +79,7 @@ function KeyField({
         type="password"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 rounded border border-cue-subtle/40 bg-black/30 p-1 text-xs text-cue-text focus:border-cue-accent focus:outline-none"
+        className="mt-1 rounded border border-cue-subtle/40 bg-cue-surface p-1 text-xs text-cue-text focus:border-cue-accent focus:outline-none"
       />
     </label>
   );

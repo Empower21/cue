@@ -12,14 +12,14 @@ export function AnswerCard({ answer, onCopy }: Props) {
   return (
     <div className="rounded-lg border border-cue-subtle/40 bg-cue-surface/40 p-3">
       {answer.fallback && (
-        <p className="mb-2 text-[10px] uppercase tracking-wide text-amber-300">
+        <p className="mb-2 text-[10px] uppercase tracking-wide text-amber-600">
           Fallback model
         </p>
       )}
       {answer.error ? (
-        <p className="text-xs text-red-300">Error: {answer.error}</p>
+        <p className="text-xs text-red-600">Error: {answer.error}</p>
       ) : (
-        <div className="prose prose-invert prose-sm max-w-none text-cue-text">
+        <div className="prose prose-sm max-w-none text-cue-text">
           <ReactMarkdown>{answer.text}</ReactMarkdown>
         </div>
       )}

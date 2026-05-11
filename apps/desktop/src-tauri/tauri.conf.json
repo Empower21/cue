@@ -17,11 +17,11 @@
         "title": "cue",
         "width": 360,
         "height": 480,
-        "minWidth": 280,
-        "minHeight": 360,
+        "minWidth": 120,
+        "minHeight": 32,
         "resizable": true,
         "decorations": false,
-        "transparent": true,
+        "transparent": false,
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "shadow": false,
@@ -43,7 +43,5 @@
     "longDescription": "Real-time notes and contextual answers in a minimalist overlay.",
     "copyright": "© 2026 the cue contributors"
   },
-  "plugins": {
-    "global-shortcut": {}
-  }
+  "plugins": {}
 }

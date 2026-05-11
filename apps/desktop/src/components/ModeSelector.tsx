@@ -15,7 +15,7 @@ const MODES: ReadonlyArray<{ id: Mode; label: string }> = [
 
 export function ModeSelector({ mode, setMode }: ModeSelectorProps) {
   return (
-    <div className="flex gap-1 rounded-md bg-black/30 p-1">
+    <div className="flex gap-1 rounded-md bg-cue-surface p-1">
       {MODES.map((m) => (
         <button
           key={m.id}

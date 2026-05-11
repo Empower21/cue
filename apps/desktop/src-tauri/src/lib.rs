@@ -10,7 +10,11 @@ use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    env_logger::init();
+    // Default to info-level logs so the user can capture stderr for diagnostics.
+    // Override with RUST_LOG=debug for noisier output.
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+        .format_timestamp_millis()
+        .init();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -21,6 +25,7 @@ pub fn run() {
             session::save_config,
             session::load_config,
             session::ask,
+            overlay::drag::start_native_drag,
         ])
         .setup(|app| {
             let main = app

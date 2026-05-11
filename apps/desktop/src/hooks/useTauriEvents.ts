@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 
+// Window-level signal that both useTranscript and useAnswer subscribe to.
+// Using a DOM event (vs a shared store) keeps the hooks self-contained and
+// avoids importing a state manager just to clear two pieces of state.
+const SESSION_RESET_EVENT = 'cue:session-reset';
+
+export function emitSessionReset() {
+  window.dispatchEvent(new CustomEvent(SESSION_RESET_EVENT));
+}
+
 interface AudioSignalEvent {
   channel: 'mic' | 'system';
   voiced: boolean;
@@ -49,6 +58,12 @@ function findLastIndex<T>(arr: T[], predicate: (item: T) => boolean): number {
 
 export function useTranscript() {
   const [utterances, setUtterances] = useState<TranscriptUtterance[]>([]);
+
+  useEffect(() => {
+    const onReset = () => setUtterances([]);
+    window.addEventListener(SESSION_RESET_EVENT, onReset);
+    return () => window.removeEventListener(SESSION_RESET_EVENT, onReset);
+  }, []);
 
   useEffect(() => {
     let interimCounter = 0;
@@ -124,6 +139,12 @@ export interface StreamingAnswer {
 
 export function useAnswer() {
   const [answer, setAnswer] = useState<StreamingAnswer>({ text: '', done: true, fallback: false });
+
+  useEffect(() => {
+    const onReset = () => setAnswer({ text: '', done: true, fallback: false });
+    window.addEventListener(SESSION_RESET_EVENT, onReset);
+    return () => window.removeEventListener(SESSION_RESET_EVENT, onReset);
+  }, []);
 
   useEffect(() => {
     const unlisten = listen<AnswerEvent>('answer_event', ({ payload }) => {

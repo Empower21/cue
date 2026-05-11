@@ -77,6 +77,13 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # BYO-keys distribution: users enter their own Anthropic key in
+          # Settings. Empty placeholders satisfy the env!() compile-time
+          # requirement in src/session.rs; an empty primary key just routes
+          # the runtime call through the HF fallback (also empty here, so
+          # the user-provided override key in Settings is required).
+          CUE_ANTHROPIC_KEY: ""
+          CUE_HF_TOKEN: ""
           # Tauri updater signing key (set via repo secret when ready):
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}

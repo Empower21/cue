@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>cue — User Guide (alpha)</title>
+<style>
+  :root {
+    --bg: #0b0d10;
+    --surface: #14171c;
+    --subtle: #2a2f37;
+    --text: #e8ecf2;
+    --muted: #99a1ad;
+    --accent: #7c9cff;
+    --accent-hover: #93afff;
+    --warn: #f5c451;
+    --bad: #ff6b6b;
+    --good: #5fd58a;
+    --maxw: 880px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+  main { max-width: var(--maxw); margin: 0 auto; padding: 48px 24px 96px; }
+  h1, h2, h3 { letter-spacing: -0.01em; }
+  h1 { font-size: 2.25rem; margin: 0 0 0.25rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 0.5rem; border-top: 1px solid var(--subtle); padding-top: 1.75rem; }
+  h3 { font-size: 1.125rem; margin: 1.5rem 0 0.25rem; color: var(--accent); }
+  p { color: var(--text); }
+  .lead { color: var(--muted); font-size: 1.05rem; margin-top: 0; }
+  ul, ol { padding-left: 1.25rem; }
+  li { margin: 0.35rem 0; }
+  code, kbd { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em; }
+  code { background: var(--surface); padding: 0.1em 0.35em; border-radius: 4px; border: 1px solid var(--subtle); }
+  kbd { background: var(--surface); border: 1px solid var(--subtle); border-bottom-width: 2px; border-radius: 4px; padding: 0.1em 0.45em; }
+  pre { background: var(--surface); border: 1px solid var(--subtle); border-radius: 8px; padding: 14px 16px; overflow-x: auto; }
+  pre code { background: transparent; border: 0; padding: 0; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  .pill { display: inline-block; font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; background: var(--surface); border: 1px solid var(--subtle); border-radius: 999px; padding: 2px 10px; color: var(--muted); margin-right: 6px; }
+  .pill.warn { color: var(--warn); border-color: rgba(245,196,81,0.4); }
+  .pill.bad { color: var(--bad); border-color: rgba(255,107,107,0.4); }
+  .pill.good { color: var(--good); border-color: rgba(95,213,138,0.4); }
+  .callout { border-left: 3px solid var(--accent); background: rgba(124,156,255,0.06); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+  .callout.warn { border-color: var(--warn); background: rgba(245,196,81,0.06); }
+  .callout.bad { border-color: var(--bad); background: rgba(255,107,107,0.06); }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.95rem; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--subtle); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .toc { background: var(--surface); border: 1px solid var(--subtle); border-radius: 8px; padding: 14px 20px; margin: 1.5rem 0; }
+  .toc ol { margin: 0.25rem 0 0; }
+  .toc a { color: var(--text); }
+  .toc a:hover { color: var(--accent); }
+  .small { font-size: 0.85rem; color: var(--muted); }
+  hr { border: 0; border-top: 1px solid var(--subtle); margin: 2rem 0; }
+</style>
+</head>
+<body>
+<main>
+
+  <p>
+    <span class="pill warn">Alpha</span>
+    <span class="pill">Personal use only</span>
+    <span class="pill">macOS · Windows</span>
+  </p>
+  <h1>cue — User Guide</h1>
+  <p class="lead">
+    Practical instructions for using cue today, based on what is actually in the build
+    (not the marketing copy). Last updated 2026-05-10.
+  </p>
+
+  <div class="toc">
+    <strong>Contents</strong>
+    <ol>
+      <li><a href="#what-you-have">What you actually have right now</a></li>
+      <li><a href="#first-look">First look — the overlay</a></li>
+      <li><a href="#context">Pasting context (JD, resume, role/company)</a></li>
+      <li><a href="#modes">The three modes: Listen, Ask, Auto</a></li>
+      <li><a href="#move-hide">Moving, collapsing, and hiding the window</a></li>
+      <li><a href="#refresh">"Refresh" — clearing context and answer history</a></li>
+      <li><a href="#calls">Using cue during a real call (Zoom, Meet, Webex, Teams, etc.)</a></li>
+      <li><a href="#install-other">Installing on another machine</a></li>
+      <li><a href="#settings">Settings &amp; API keys</a></li>
+      <li><a href="#troubleshooting">Troubleshooting</a></li>
+      <li><a href="#roadmap">What's coming next</a></li>
+    </ol>
+  </div>
+
+  <h2 id="what-you-have">1. What you actually have right now</h2>
+
+  <p>
+    There are two places the name "cue" shows up. They are different:
+  </p>
+
+  <table>
+    <thead>
+      <tr><th>Thing</th><th>What it is</th><th>What it does</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a href="https://cue-web-five.vercel.app" target="_blank">cue-web-five.vercel.app</a></td>
+        <td><strong>Marketing site.</strong> Next.js 15 on Vercel. No login, no input forms, no AI.</td>
+        <td>Describes the product and links to <code>/download</code>. Today the download endpoints return 404 because the first GitHub release hasn't been published yet.</td>
+      </tr>
+      <tr>
+        <td>The cue overlay on your screen</td>
+        <td><strong>The real app.</strong> Tauri 2 desktop build running locally on your Windows machine via <code>pnpm dev</code>.</td>
+        <td>This is where the Job Description / Resume / Role-Company fields live. If you pasted text into a form and saw a streaming answer, you were in this window — not in the web tab.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>Translation:</strong> when you said "I got logged out" — cue itself has no login. You were almost certainly logged out of a different browser tab (Google, GitHub, etc.). The cue overlay does not authenticate you against anything. Your API keys are stored locally in a config file (see <a href="#settings">Settings</a>).
+  </div>
+
+  <h3>Status as of this guide</h3>
+  <ul>
+    <li><span class="pill good">Working</span> Transparent overlay window, content-protected for screen share (mac + win)</li>
+    <li><span class="pill good">Working</span> Dual-channel audio capture (your mic + system audio kept separate)</li>
+    <li><span class="pill good">Working</span> Deepgram streaming speech-to-text</li>
+    <li><span class="pill good">Working</span> Claude Sonnet 4.6 streaming with HuggingFace Mistral-7B fallback (8 s first-token timeout)</li>
+    <li><span class="pill good">Working</span> Three modes: Listen / Ask / Auto, plus pasted JD + Resume + Role context</li>
+    <li><span class="pill good">Working</span> Global hotkey <kbd>Ctrl</kbd>+<kbd>\</kbd> (Windows) / <kbd>Cmd</kbd>+<kbd>\</kbd> (macOS) toggles overlay visibility — registered globally so it fires even when cue isn't focused.</li>
+    <li><span class="pill warn">Janky</span> Window drag — uses a JS mousemove workaround because the native Windows caption-drag conflicted with Aero Snap. It works but skips frames.</li>
+    <li><span class="pill good">Working</span> "End Session" button in the header — stops capture, clears transcript and answer cards, optional checkbox also wipes pasted JD/Resume/Role.</li>
+    <li><span class="pill bad">Missing</span> Public release. <code>/download</code> on the website returns 404 — no <code>v0.1.0</code> tag has been pushed to GitHub yet.</li>
+  </ul>
+
+  <h2 id="first-look">2. First look — the overlay</h2>
+  <p>When the dev build is running, you see a narrow dark panel with rounded corners. Top to bottom:</p>
+  <ol>
+    <li><strong>Header bar.</strong> Says <code>cue</code> on the left, and on the right has four controls: <em>End</em> (ends this session with confirmation), <em>Context</em>, a gear (<code>⚙</code>) for Settings, and a square (<code>▢</code>) to collapse the window to a pill.</li>
+    <li><strong>Mode selector.</strong> Three pills: <em>Listen</em>, <em>Ask</em>, <em>Auto</em>.</li>
+    <li><strong>Start/Stop bar.</strong> A blue <em>Start</em> button (becomes <em>Stop</em> once running), plus two voice-activity dots: <em>you</em> (mic) and <em>them</em> (system audio). The dots flash green when that channel is hearing voiced speech.</li>
+    <li><strong>Main area.</strong> Empty until you press Start. Then shows the live transcript, plus — depending on mode — an Ask input or a stack of streaming Answer cards.</li>
+    <li><strong>Footer.</strong> Shows the current mode and any error string.</li>
+  </ol>
+
+  <h2 id="context">3. Pasting context (JD, resume, role/company)</h2>
+  <ol>
+    <li>Click <strong>Context</strong> in the header.</li>
+    <li>Paste:
+      <ul>
+        <li><strong>Job description</strong> — the full posting text.</li>
+        <li><strong>Resume</strong> — your resume in plain text. (No file upload yet; just copy/paste.)</li>
+        <li><strong>Role / company</strong> — short note like <code>Staff PM, Acme Corp, Series C</code>.</li>
+      </ul>
+    </li>
+    <li>Click <strong>Save</strong>.</li>
+  </ol>
+  <p>
+    Behind the scenes those three strings are written to
+    <code>%APPDATA%\cue\config.toml</code> on Windows
+    (or <code>~/Library/Application Support/cue/config.toml</code> on macOS),
+    and are pinned in the Anthropic prompt cache so every answer you generate
+    is grounded in them without paying full cost each turn.
+  </p>
+  <div class="callout warn">
+    <strong>Your data does not sync across machines.</strong> The config file is local. If you reinstall or move to a new computer, you'll re-paste.
+  </div>
+
+  <h2 id="modes">4. The three modes</h2>
+
+  <h3>Listen</h3>
+  <p>
+    Transcribes both sides of the conversation in real time. No AI answers — just notes.
+    Best for capturing meeting minutes or study sessions where you want a transcript later
+    but don't want the LLM in the loop.
+  </p>
+
+  <h3>Ask</h3>
+  <p>
+    Manual mode. While the transcript runs, type a question in the box at the bottom and
+    press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (or click <em>Ask</em>). cue sends the question
+    plus your JD + resume + role + the last ~10 turns of transcript to Claude, and streams
+    back an answer in the card above. Each new Ask <em>resets</em> the answer card —
+    so there's no clutter, but also no history.
+  </p>
+
+  <h3>Auto</h3>
+  <p>
+    Listens to the <em>"them"</em> channel (system audio = the other person on the call)
+    and tries to detect questions. Triggers when:
+  </p>
+  <ul>
+    <li>The line ends with a <code>?</code>, OR</li>
+    <li>The line starts with one of: <em>what / how / why / when / where / who / can / could / would / should / is / are / do / does / did / tell / describe / explain</em></li>
+  </ul>
+  <p>
+    There's a 3-second debounce so back-to-back questions don't fire twice. Each detected
+    question produces a streaming answer card; old cards stay on screen
+    <strong>indefinitely</strong> — newest at the top. <em>(There is no clear-list button yet — see <a href="#refresh">section 6</a>.)</em>
+  </p>
+
+  <h2 id="move-hide">5. Moving, collapsing, and hiding the window</h2>
+
+  <h3>Move it</h3>
+  <p>Click-and-drag the header bar (the strip with <code>cue</code> on the left and the buttons on the right). Avoid clicking on a button or input — those are excluded from drag.</p>
+  <p>
+    The drag is JS-driven, not native. On Windows it's been intentionally implemented
+    this way because the OS caption-drag was breaking against Aero Snap. The trade-off
+    is that drag can feel a half-frame behind on a busy CPU.
+  </p>
+
+  <h3>Collapse to a pill</h3>
+  <p>Click the <code>▢</code> button in the header. The window shrinks to a <em>140 × 32</em> rounded pill that still hides from screen-share. Click <code>▢</code> again on the pill to expand back to <em>360 × 480</em>.</p>
+
+  <h3>Get it off the screen</h3>
+  <p>You have three options today:</p>
+  <ul>
+    <li><strong>Collapse</strong> to the small pill — keeps the session running but takes almost no space.</li>
+    <li><strong>Drag it off-screen</strong> — because it's always-on-top, it'll come back when you drag it on again.</li>
+    <li><strong>Close the window</strong> — clicking X is intercepted in v0.1 (the close hides instead of quits). To fully quit you stop the dev process (<kbd>Ctrl</kbd>+<kbd>C</kbd> in the terminal running <code>pnpm dev</code>).</li>
+  </ul>
+  <h3>Toggle visibility from anywhere with the hotkey</h3>
+  <p>
+    Press <kbd>Ctrl</kbd>+<kbd>\</kbd> on Windows (<kbd>Cmd</kbd>+<kbd>\</kbd> on macOS)
+    from <em>any</em> application — the cue overlay hides if visible, shows if hidden.
+    The hotkey is registered globally (the OS forwards it to cue even when another app has focus),
+    so you can stash and recall the overlay mid-call without alt-tabbing.
+  </p>
+  <div class="callout">
+    <strong>If the hotkey doesn't fire:</strong> another app on your machine may have claimed
+    <kbd>Ctrl</kbd>+<kbd>\</kbd>. The Rust log line you want is <code>global shortcut registered: CmdOrCtrl+Backslash</code> in the dev terminal. If you don't see that line, the registration failed (usually because someone else has it bound). Fix: close whichever app holds the chord, or change the binding in <code>apps/desktop/src-tauri/src/overlay/hotkeys.rs</code> (the <code>TOGGLE_SHORTCUT</code> constant).
+  </div>
+
+  <h2 id="refresh">6. Ending a session — clearing answers, transcript, and optionally context</h2>
+
+  <p>Click <strong>End</strong> in the header. A confirmation panel appears:</p>
+
+  <pre><code>End this session?
+
+ • Stops transcription
+ • Clears all answer cards
+ • Clears live transcript
+
+ [ ] Also clear pasted Job Description, Resume,
+     and Role/Company
+     API keys are kept either way.
+
+                       [Cancel]  [End Session]</code></pre>
+
+  <p>Two ways to use it:</p>
+  <ol>
+    <li><strong>Quick reset (checkbox unchecked).</strong> Stops capture, wipes the answer stack and live transcript, but <em>keeps</em> your pasted JD / Resume / Role-Company. Use this between back-to-back interviews against the same prep.</li>
+    <li><strong>Full wipe (checkbox checked).</strong> Same as above, plus blanks the JD / Resume / Role-Company fields in <code>config.toml</code>. Use this when you're done with a job-hunt cycle or handing the laptop to someone else.</li>
+  </ol>
+
+  <div class="callout">
+    <strong>What it does <em>not</em> touch:</strong> your Deepgram and Anthropic API keys, your window position, or your mode selection. Keys live in the same <code>config.toml</code> but the End Session flow deliberately leaves them alone — clear them manually via the gear (<code>⚙</code>) if you need to.
+  </div>
+
+  <h3>Other reset paths (still available)</h3>
+
+  <table>
+    <thead>
+      <tr><th>You want to clear…</th><th>How</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Just the current <em>Ask</em> answer</td>
+        <td>Type a new question — the card resets on each Ask.</td>
+      </tr>
+      <tr>
+        <td>Just the rolling transcript window the LLM sees (last 10 turns)</td>
+        <td>Press <em>Stop</em> then <em>Start</em>. The Rust-side buffer is rebuilt on each Start.</td>
+      </tr>
+      <tr>
+        <td>Your Deepgram / Anthropic key</td>
+        <td>Open the gear (⚙), select the field, delete, Save.</td>
+      </tr>
+      <tr>
+        <td>Absolutely everything including keys</td>
+        <td>Close cue and delete <code>%APPDATA%\cue\config.toml</code> (or <code>~/Library/Application Support/cue/config.toml</code> on macOS).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 id="calls">7. Using cue during a real call</h2>
+  <p>
+    There is <strong>no per-platform setup</strong>. cue works the same way in any conferencing
+    or recording app on Windows or macOS, because the two mechanisms it depends on are OS-level:
+  </p>
+
+  <ul>
+    <li><strong>Screen-share invisibility.</strong> The overlay sets <code>WDA_EXCLUDEFROMCAPTURE</code> on Windows and <code>NSWindow.sharingType = .none</code> on macOS. Any app that uses the OS's standard screen-capture APIs (Zoom, Google Meet, Microsoft Teams, Webex, Slack Huddle, Discord screen-share, Loom, OBS using <em>Display Capture</em>) will see the screen <em>behind</em> the overlay, not the overlay itself.</li>
+    <li><strong>System audio capture.</strong> cue records the system audio loopback on its own (WASAPI loopback on Windows), so it hears the other person regardless of which app they're talking to you through.</li>
+  </ul>
+
+  <h3>Pre-call checklist</h3>
+  <ol>
+    <li>Start cue. Paste JD + resume + role/company under <em>Context</em>. Save.</li>
+    <li>Pick a mode: <em>Auto</em> if you want hands-free answers, <em>Ask</em> if you want to control when the AI speaks, <em>Listen</em> if you just want notes.</li>
+    <li>Press <strong>Start</strong>. Confirm both voice dots flash green: <em>you</em> when you speak, <em>them</em> when the other party speaks. (If <em>them</em> never flashes, see <a href="#troubleshooting">Troubleshooting</a>.)</li>
+    <li>Position the cue window outside the area your camera shows and outside any window you'll be sharing. (It hides from <em>screen</em> share, not from your <em>webcam</em>.)</li>
+    <li>Join the call as normal. No "activation" needed inside Zoom / Meet / Webex.</li>
+  </ol>
+
+  <h3>Verifying invisibility — do this once before a real interview</h3>
+  <ol>
+    <li>Open Zoom (or any of the others) and start a meeting with yourself.</li>
+    <li>Share your screen.</li>
+    <li>Check the share preview thumbnail. The cue overlay should be absent from the preview while still visible on your monitor.</li>
+  </ol>
+  <p>If you see cue in the share preview, see <a href="#troubleshooting">Troubleshooting → screen-share leak</a>.</p>
+
+  <div class="callout warn">
+    <strong>Two cameras worth of risk:</strong>
+    <em>(1)</em> the overlay is hidden from screen share but <strong>not from your webcam</strong> — if your camera physically points at your monitor, it'll see cue.
+    <em>(2)</em> remote-proctoring software (Proctorio, Examity, HonorLock) bypasses the OS screen-capture API and takes raw framebuffers — cue is <strong>not</strong> hidden from that, by design. See <code>LICENSE</code>.
+  </div>
+
+  <h2 id="install-other">8. Installing on another machine</h2>
+
+  <p>The site at <code>cue-web-five.vercel.app/download</code> detects your OS and offers a <code>.msi</code> (Windows) or <code>.dmg</code> (macOS). <strong>Right now both return HTTP 404</strong> because no GitHub Release has been tagged yet.</p>
+
+  <p>So today you have three real paths to a second machine:</p>
+
+  <h3>Path A — wait for v0.1.0 (easiest, but blocked on you)</h3>
+  <ol>
+    <li>Push a <code>v0.1.0</code> tag to the GitHub repo with the built MSI attached.</li>
+    <li>The download page will start serving it automatically (see <code>apps/web/lib/github-release.ts</code>).</li>
+    <li>On the second machine: open <a href="https://cue-web-five.vercel.app/download" target="_blank">cue-web-five.vercel.app/download</a> → click the platform-detected button → install.</li>
+  </ol>
+
+  <h3>Path B — copy the locally-built MSI</h3>
+  <p>Per <code>CHANGELOG.md</code> a release MSI was built on 2026-05-10. It's at:</p>
+  <pre><code>cue\apps\desktop\src-tauri\target\release\bundle\msi\cue_0.1.0_x64_en-US.msi</code></pre>
+  <p>Copy that file to the second machine (USB / OneDrive / Dropbox), double-click it. The MSI carries the placeholder build-time keys baked in, so you'll still need to open Settings on the new machine and paste your Deepgram key.</p>
+
+  <h3>Path C — clone the repo and run dev mode on the second machine</h3>
+  <p>Same flow you're using now. The other machine needs:</p>
+  <ul>
+    <li>Node.js 24 LTS, pnpm 9+</li>
+    <li>Rust 1.78+ (<a href="https://rustup.rs/" target="_blank">rustup.rs</a>)</li>
+    <li>On Windows: Microsoft C++ Build Tools (Visual Studio Installer → "Desktop development with C++")</li>
+    <li>On macOS: Xcode Command Line Tools (<code>xcode-select --install</code>)</li>
+  </ul>
+  <pre><code>git clone &lt;your-cue-repo-url&gt;
+cd cue
+pnpm install
+pnpm dev</code></pre>
+  <p>This launches the same dev overlay you're using now.</p>
+
+  <h2 id="settings">9. Settings &amp; API keys</h2>
+  <p>Click the gear (<code>⚙</code>) in the header. Two fields:</p>
+  <ul>
+    <li>
+      <strong>Deepgram API key.</strong> Required to press Start. Get one free at
+      <a href="https://deepgram.com" target="_blank">deepgram.com</a> — they hand out
+      ~US$200 of credit which is enough for hundreds of hours of streaming STT.
+    </li>
+    <li>
+      <strong>Override Anthropic key (optional).</strong> The MSI ships with an
+      Anthropic key baked in at build time via <code>CUE_ANTHROPIC_KEY</code>.
+      If you want to use your own personal Anthropic key (and your own usage caps),
+      paste it here.
+    </li>
+  </ul>
+  <p>Both are stored as plaintext in <code>config.toml</code> — see <a href="#context">section 3</a> for the path. Treat that file like any other API-key file on your machine.</p>
+
+  <h2 id="troubleshooting">10. Troubleshooting</h2>
+
+  <h3>"capture already running" / Start button does nothing</h3>
+  <p>Most likely the audio session is stuck from a previous run. Click Stop, then Start again. If still stuck, close the cue window (or <kbd>Ctrl</kbd>+<kbd>C</kbd> in the dev terminal) and restart.</p>
+
+  <h3>The <em>them</em> dot never lights up</h3>
+  <p>You're capturing your mic but not system audio. Checks:</p>
+  <ul>
+    <li>Audio is actually playing out of your speakers / headphones (cue captures loopback on the default output device).</li>
+    <li>You haven't routed the call audio to a virtual cable / Bluetooth device that's not the default output.</li>
+    <li>On Windows, verify in <em>Sound settings → Output</em> that the active device is the one playing the call audio.</li>
+  </ul>
+
+  <h3>Answers say "Anthropic unavailable — falling back to HuggingFace Mistral-7B"</h3>
+  <p>This is the orchestrator doing its job. It means either no token arrived from Claude within 8 seconds, or Claude returned an error before any token. Causes:</p>
+  <ul>
+    <li>Anthropic credit balance hit zero.</li>
+    <li>API key invalid or revoked.</li>
+    <li>Network blip.</li>
+  </ul>
+  <p>Top-up at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>, or paste a valid override key in Settings.</p>
+
+  <h3>Screen-share leak — cue is visible in the Zoom/Meet share preview</h3>
+  <ul>
+    <li>Confirm you are using a recent Zoom / Meet / Teams version. Very old builds bypass the OS exclusion list.</li>
+    <li>Confirm you are using <em>screen / display / window</em> share, not a virtual camera that re-captures the display.</li>
+    <li>On macOS, the OS sometimes resets <code>sharingType</code> after a system update — restart cue.</li>
+  </ul>
+
+  <h3>"Deepgram API key not set in Settings"</h3>
+  <p>Open the gear, paste a key, Save, then try Start again.</p>
+
+  <h3>Window won't drag</h3>
+  <p>Make sure you're click-dragging the header strip, not a button. The header has a 6-pixel grab handle indicator at the top center.</p>
+
+  <h2 id="roadmap">11. What's coming next (from <code>ROADMAP.md</code>)</h2>
+  <ul>
+    <li><strong>v0.1.0</strong> — first public GitHub release: download links go live.</li>
+    <li><strong>v0.1.1</strong> — system tray icon for explicit quit + audio device selector.</li>
+    <li><strong>v0.2.x backlog</strong> — local Whisper.cpp STT, process-name masquerading, multi-provider LLM (Gemini, OpenAI, Ollama), session export to markdown, custom prompt templates per use case, optional cloud sync of settings, iOS/Android read-only viewer.</li>
+  </ul>
+
+  <hr />
+  <p class="small">
+    Generated for the local cue alpha at <code>C:\Users\amdre\OneDrive\Desktop\AI ARCHITECTURE SOLUTIONS - GTM\Interview Help\cue</code>.
+    Personal-use license — see <code>LICENSE</code> for compliance obligations around recording laws and platform terms of service.
+  </p>
+
+</main>
+</body>
+</html>
