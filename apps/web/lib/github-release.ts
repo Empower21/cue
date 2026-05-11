@@ -21,7 +21,7 @@ interface GitHubRelease {
 const PLATFORM_ASSET_PATTERNS: Record<ReleaseManifestPlatform, RegExp> = {
   // Tauri's default bundle naming: cue_<version>_<arch>.<ext>
   // Examples: cue_0.1.0_aarch64.dmg, cue_0.1.0_x64_en-US.msi
-  'darwin-aarch64': /\.dmg$/i,
+  'darwin-aarch64': /_aarch64.*\.dmg$/i,
   'darwin-x86_64': /(_x64|_x86_64).*\.dmg$/i,
   'windows-x86_64': /\.msi$/i,
 };
