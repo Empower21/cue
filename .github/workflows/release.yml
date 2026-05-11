@@ -37,9 +37,10 @@ jobs:
           node-version: '24'
 
       - name: Install pnpm
+        # version is read from package.json packageManager field — do not
+        # set `version:` here, pnpm/action-setup@v4 refuses both sources.
         uses: pnpm/action-setup@v4
         with:
-          version: 9
           run_install: false
 
       - name: Get pnpm store directory
