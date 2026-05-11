@@ -9,9 +9,11 @@ target/
 
 # Tauri
 src-tauri/target/
-src-tauri/target-check/
 src-tauri/gen/
 src-tauri/Cargo.lock
+# target-check is the isolated CARGO_TARGET_DIR used for compile verification
+# outside OneDrive's reach; unanchored so it matches under apps/desktop too.
+**/target-check/
 
 # IDE
 .vscode/

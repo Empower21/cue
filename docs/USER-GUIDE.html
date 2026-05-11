@@ -65,7 +65,13 @@
   <h1>cue — User Guide</h1>
   <p class="lead">
     Practical instructions for using cue today, based on what is actually in the build
-    (not the marketing copy). Last updated 2026-05-10.
+    (not the marketing copy). Last updated 2026-05-11.
+  </p>
+  <p class="small" style="margin-top: -8px;">
+    The canonical end-user version of this document lives on the marketing site at
+    <a href="https://cue-web-five.vercel.app/guide">cue-web-five.vercel.app/guide</a>.
+    This HTML is the developer / internal-reference copy that ships in the repo at
+    <code>cue/docs/USER-GUIDE.html</code>.
   </p>
 
   <div class="toc">
@@ -390,6 +396,16 @@ pnpm dev</code></pre>
 
   <h3>"Deepgram API key not set in Settings"</h3>
   <p>Open the gear, paste a key, Save, then try Start again.</p>
+
+  <h3>Ctrl+\ hotkey stops working after cue has been up for a long time</h3>
+  <p>
+    Known long-uptime issue on the alpha. The Windows
+    <code>RegisterHotKey</code> binding can drop after many hours and several Vite
+    hot-reloads of the dev build. Fix: fully quit and relaunch cue. Confirm via
+    the log line <code>global shortcut registered: CmdOrCtrl+Backslash</code> on
+    the fresh launch — that proves the OS accepted the registration. Tracking
+    for v0.1.x.
+  </p>
 
   <h3>Window won't drag</h3>
   <p>Make sure you're click-dragging the header strip, not a button. The header has a 6-pixel grab handle indicator at the top center.</p>

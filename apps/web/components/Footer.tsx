@@ -8,6 +8,7 @@ export function Footer() {
           cue — personal-use AI co-pilot. © {new Date().getFullYear()} the cue contributors.
         </p>
         <div className="flex gap-6">
+          <Link href="/guide" className="transition hover:text-cue-text">Guide</Link>
           <Link href="/eula" className="transition hover:text-cue-text">License</Link>
           <Link href="/changelog" className="transition hover:text-cue-text">Changelog</Link>
         </div>

@@ -11,6 +11,7 @@ export function Nav() {
           cue
         </Link>
         <div className="flex items-center gap-6 text-sm text-cue-muted">
+          <Link href="/guide" className="transition hover:text-cue-text">Guide</Link>
           <Link href="/changelog" className="transition hover:text-cue-text">Changelog</Link>
           <Link href="/eula" className="transition hover:text-cue-text">EULA</Link>
           <Link
