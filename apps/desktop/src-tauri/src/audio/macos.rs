@@ -131,6 +131,14 @@ impl MacosCapture {
     }
 }
 
+// SAFETY: cpal::Stream is marked `!Send` via `PhantomData<*mut ()>` as a
+// conservative cross-platform marker, and CPAL's CoreAudio path also boxes
+// a !Send property-listener closure. In practice both objects are accessed
+// only from within the async start/stop methods on a single task — never
+// concurrently — and Tokio guarantees the future's execution is serialized
+// per task. Same justification as `WindowsCapture` in audio/windows.rs.
+unsafe impl Send for MacosCapture {}
+
 #[async_trait]
 impl AudioCaptureSession for MacosCapture {
     async fn start(&mut self, sender: Sender<PcmFrame>) -> Result<(), CaptureError> {

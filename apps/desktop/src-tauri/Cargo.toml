@@ -49,7 +49,12 @@ dirs = "5.0"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.5"
-objc2-app-kit = { version = "0.2", features = ["NSWindow"] }
+# NSWindow the *class* is gated behind the "NSResponder" feature in
+# objc2-app-kit 0.2.x because NSWindow : NSResponder. The "NSWindow"
+# feature only enables non-class helpers (NSWindowCollectionBehavior,
+# NSWindowSharingType, etc.). Need both to use `setCollectionBehavior`
+# on an &NSWindow.
+objc2-app-kit = { version = "0.2", features = ["NSWindow", "NSResponder"] }
 objc2-foundation = "0.2"
 # Audio capture additions (Step 3.1 — P2-T3):
 # screencapturekit 0.3 does not exist; latest is 2.0.0 — pinned here.

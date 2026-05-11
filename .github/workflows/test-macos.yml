@@ -1,0 +1,65 @@
+name: Test macOS compile
+
+# Verification-only workflow: runs `cargo check` for the macOS targets so
+# Rust compile errors surface in ~5 min instead of waiting for the full
+# 20+ min bundling step in release.yml. Never produces a release artifact.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'fix/macos-**'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+          - platform: macos-13
+            target: x86_64-apple-darwin
+
+    runs-on: ${{ matrix.platform }}
+    name: cargo check ${{ matrix.target }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            apps/desktop/src-tauri/target
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-check-${{ hashFiles('apps/desktop/src-tauri/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.target }}-cargo-check-
+
+      - name: cargo tree (resolved objc2 + objc2-app-kit)
+        working-directory: apps/desktop/src-tauri
+        # Diagnostic. If a Rust error references a wrong version of these
+        # crates, the tree shows the duplicates.
+        run: |
+          cargo tree --target ${{ matrix.target }} -e features -p objc2-app-kit || true
+          echo "---"
+          cargo tree --target ${{ matrix.target }} -e features -p objc2 || true
+
+      - name: cargo check
+        working-directory: apps/desktop/src-tauri
+        # env!() compile-time keys are empty for BYO-keys distribution.
+        env:
+          CUE_ANTHROPIC_KEY: ""
+          CUE_HF_TOKEN: ""
+        run: cargo check --target ${{ matrix.target }}
