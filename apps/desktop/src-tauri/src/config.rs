@@ -14,6 +14,12 @@ pub struct Config {
     pub resume: Option<String>,
     /// User-pasted role/seniority/company context.
     pub role_context: Option<String>,
+    /// Writing sample used for voice/tone matching. Populated either by paste
+    /// or by uploading a .txt/.md/.docx file via `read_document`.
+    pub voice_sample: Option<String>,
+    /// BCP-47 language tag for STT + LLM output. Defaults to "en" when unset.
+    /// Supported in the UI: en, es, fr, zh, hi, ar, it, de, nl.
+    pub language: Option<String>,
 }
 
 pub fn config_path() -> anyhow::Result<PathBuf> {

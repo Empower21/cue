@@ -1,0 +1,59 @@
+{
+  "app": { "title": "cue", "start": "Démarrer", "stop": "Arrêter", "end": "Terminer" },
+  "modes": { "listen": "Écouter", "ask": "Demander", "auto": "Auto", "label": "Mode" },
+  "audio": { "you": "vous", "them": "eux" },
+  "panel": {
+    "context": "Contexte",
+    "answer": "Répondre",
+    "screenshot": "Capture",
+    "ask": "Demander",
+    "askPlaceholder": "Posez votre question (Cmd/Ctrl+Entrée pour envoyer)",
+    "pressStart": "Appuyez sur Démarrer pour commencer.",
+    "errorLabel": "Erreur",
+    "thinking": "Réflexion en cours…",
+    "analysingScreen": "Lecture de l'écran…",
+    "visibilityNotice": "Voici la version web de cue — visible lors d'un partage d'écran. Utilisez-la sur un téléphone, une tablette ou un second écran que l'intervieweur ne partage pas. Pour une invisibilité au niveau du système sur la même machine, installez l'application de bureau.",
+    "getDesktop": "Obtenir l'app"
+  },
+  "context": {
+    "title": "Contexte",
+    "jd": "Description du poste",
+    "resume": "CV",
+    "role": "Rôle / entreprise",
+    "voiceSample": "Échantillon de voix (votre propre écriture — sert au ton)",
+    "voiceSampleHelp": "Collez quelques paragraphes que vous avez écrits, ou téléversez un document. cue s'en sert pour parler comme vous.",
+    "uploadDocument": "Téléverser .txt / .md / .docx / .pdf",
+    "uploaded": "Chargé {{name}} ({{kb}} Ko)",
+    "uploadFailed": "Lecture impossible : {{error}}",
+    "saving": "Enregistrement…",
+    "save": "Enregistrer"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "deepgramKey": "Clé API Deepgram",
+    "anthropicKey": "Surcharger la clé Anthropic (facultatif)",
+    "language": "Langue",
+    "save": "Enregistrer"
+  },
+  "end": {
+    "title": "Terminer cette session ?",
+    "item1": "Arrête la transcription",
+    "item2": "Efface toutes les réponses",
+    "item3": "Efface la transcription en direct",
+    "alsoClearContext": "Effacer aussi la description, le CV et le rôle/entreprise",
+    "keysNote": "Les clés API et l'échantillon de voix sont conservés dans tous les cas.",
+    "cancel": "Annuler",
+    "confirm": "Terminer la session"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "fr": "Français",
+    "zh": "中文",
+    "hi": "हिन्दी",
+    "ar": "العربية",
+    "it": "Italiano",
+    "de": "Deutsch",
+    "nl": "Nederlands"
+  }
+}

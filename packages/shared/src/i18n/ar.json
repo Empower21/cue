@@ -1,0 +1,59 @@
+{
+  "app": { "title": "cue", "start": "ابدأ", "stop": "إيقاف", "end": "إنهاء" },
+  "modes": { "listen": "استماع", "ask": "اسأل", "auto": "تلقائي", "label": "الوضع" },
+  "audio": { "you": "أنت", "them": "هم" },
+  "panel": {
+    "context": "السياق",
+    "answer": "أجب",
+    "screenshot": "لقطة شاشة",
+    "ask": "اسأل",
+    "askPlaceholder": "اسأل أي شيء (Cmd/Ctrl+Enter للإرسال)",
+    "pressStart": "اضغط ابدأ للبدء.",
+    "errorLabel": "خطأ",
+    "thinking": "يفكر…",
+    "analysingScreen": "يقرأ الشاشة…",
+    "visibilityNotice": "هذه نسخة المتصفح من cue — تظهر عند مشاركة الشاشة. افتحها على هاتف أو جهاز لوحي أو شاشة ثانية لا يشاركها المُقابِل. للحصول على إخفاء على مستوى النظام في نفس الجهاز، ثبّت تطبيق سطح المكتب.",
+    "getDesktop": "تحميل التطبيق"
+  },
+  "context": {
+    "title": "السياق",
+    "jd": "وصف الوظيفة",
+    "resume": "السيرة الذاتية",
+    "role": "الدور / الشركة",
+    "voiceSample": "عينة من أسلوبك (كتابتك الخاصة — لضبط اللهجة)",
+    "voiceSampleHelp": "الصق بضع فقرات كتبتها بنفسك، أو ارفع مستنداً. سيستخدمها cue ليجيب بأسلوبك.",
+    "uploadDocument": "ارفع ‎.txt / .md / .docx / .pdf",
+    "uploaded": "تم تحميل {{name}} ({{kb}} كيلوبايت)",
+    "uploadFailed": "تعذّر قراءة الملف: {{error}}",
+    "saving": "جارٍ الحفظ…",
+    "save": "حفظ"
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "deepgramKey": "مفتاح Deepgram API",
+    "anthropicKey": "استبدال مفتاح Anthropic (اختياري)",
+    "language": "اللغة",
+    "save": "حفظ"
+  },
+  "end": {
+    "title": "إنهاء هذه الجلسة؟",
+    "item1": "يوقف النسخ",
+    "item2": "يمسح جميع الأجوبة",
+    "item3": "يمسح النص الحي",
+    "alsoClearContext": "امسح أيضاً وصف الوظيفة والسيرة الذاتية والدور/الشركة",
+    "keysNote": "تُحفظ مفاتيح API وعينة الأسلوب في الحالتين.",
+    "cancel": "إلغاء",
+    "confirm": "إنهاء الجلسة"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "fr": "Français",
+    "zh": "中文",
+    "hi": "हिन्दी",
+    "ar": "العربية",
+    "it": "Italiano",
+    "de": "Deutsch",
+    "nl": "Nederlands"
+  }
+}

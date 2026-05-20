@@ -32,6 +32,26 @@ impl SttConfig {
             language: "en".into(),
         }
     }
+
+    pub fn with_language(mut self, language: &str) -> Self {
+        // Map the UI's BCP-47 short code to a Deepgram-accepted code.
+        // Where Deepgram has a "multi" model for that language, we still pass
+        // the short code — Deepgram nova-2 accepts all 9 of these.
+        let mapped = match language.split('-').next().unwrap_or("en") {
+            "en" => "en",
+            "es" => "es",
+            "fr" => "fr",
+            "zh" => "zh",
+            "hi" => "hi",
+            "ar" => "ar",
+            "it" => "it",
+            "de" => "de",
+            "nl" => "nl",
+            _ => "en",
+        };
+        self.language = mapped.to_string();
+        self
+    }
 }
 
 #[async_trait]

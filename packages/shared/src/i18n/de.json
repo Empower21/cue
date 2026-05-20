@@ -1,0 +1,59 @@
+{
+  "app": { "title": "cue", "start": "Start", "stop": "Stopp", "end": "Beenden" },
+  "modes": { "listen": "Hören", "ask": "Fragen", "auto": "Auto", "label": "Modus" },
+  "audio": { "you": "du", "them": "Gegenüber" },
+  "panel": {
+    "context": "Kontext",
+    "answer": "Antworten",
+    "screenshot": "Bildschirmfoto",
+    "ask": "Fragen",
+    "askPlaceholder": "Frag etwas (Cmd/Strg+Enter zum Senden)",
+    "pressStart": "Drücke auf »Start«, um zu beginnen.",
+    "errorLabel": "Fehler",
+    "thinking": "Denke nach…",
+    "analysingScreen": "Lese den Bildschirm…",
+    "visibilityNotice": "Dies ist die Browser-Version von cue — bei Bildschirmübertragung sichtbar. Öffne sie auf einem Handy, Tablet oder zweiten Bildschirm, den der Interviewer nicht teilt. Für Unsichtbarkeit auf Betriebssystemebene auf derselben Maschine installiere die Desktop-App.",
+    "getDesktop": "Desktop-App holen"
+  },
+  "context": {
+    "title": "Kontext",
+    "jd": "Stellenbeschreibung",
+    "resume": "Lebenslauf",
+    "role": "Rolle / Unternehmen",
+    "voiceSample": "Stimm-Probe (eigene Texte — fürs Wording)",
+    "voiceSampleHelp": "Füge ein paar selbst geschriebene Absätze ein oder lade ein Dokument hoch. cue antwortet dann in deinem Stil.",
+    "uploadDocument": ".txt / .md / .docx / .pdf hochladen",
+    "uploaded": "{{name}} geladen ({{kb}} KB)",
+    "uploadFailed": "Datei konnte nicht gelesen werden: {{error}}",
+    "saving": "Speichere…",
+    "save": "Speichern"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "deepgramKey": "Deepgram-API-Schlüssel",
+    "anthropicKey": "Anthropic-Schlüssel überschreiben (optional)",
+    "language": "Sprache",
+    "save": "Speichern"
+  },
+  "end": {
+    "title": "Sitzung beenden?",
+    "item1": "Stoppt die Transkription",
+    "item2": "Löscht alle Antwortkarten",
+    "item3": "Löscht das Live-Transkript",
+    "alsoClearContext": "Auch Stellenbeschreibung, Lebenslauf und Rolle/Unternehmen löschen",
+    "keysNote": "API-Schlüssel und Stimm-Probe bleiben in beiden Fällen erhalten.",
+    "cancel": "Abbrechen",
+    "confirm": "Sitzung beenden"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "fr": "Français",
+    "zh": "中文",
+    "hi": "हिन्दी",
+    "ar": "العربية",
+    "it": "Italiano",
+    "de": "Deutsch",
+    "nl": "Nederlands"
+  }
+}

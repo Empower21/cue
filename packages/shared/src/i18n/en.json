@@ -1,0 +1,59 @@
+{
+  "app": { "title": "cue", "start": "Start", "stop": "Stop", "end": "End" },
+  "modes": { "listen": "Listen", "ask": "Ask", "auto": "Auto", "label": "Mode" },
+  "audio": { "you": "you", "them": "them" },
+  "panel": {
+    "context": "Context",
+    "answer": "Answer",
+    "screenshot": "Screenshot",
+    "ask": "Ask",
+    "askPlaceholder": "Ask anything (Cmd/Ctrl+Enter to send)",
+    "pressStart": "Press Start to begin.",
+    "errorLabel": "Error",
+    "thinking": "Thinking…",
+    "analysingScreen": "Reading screen…",
+    "visibilityNotice": "This is the browser version of cue — visible in a screen share. Open it on a phone, tablet, or second screen the interviewer isn't sharing. For OS-level invisibility on the same machine, install the desktop app.",
+    "getDesktop": "Get desktop app"
+  },
+  "context": {
+    "title": "Context",
+    "jd": "Job description",
+    "resume": "Resume",
+    "role": "Role / company",
+    "voiceSample": "Voice sample (your own writing — used for tone)",
+    "voiceSampleHelp": "Paste a few paragraphs you wrote yourself, or upload a document. cue uses this so its answers sound like you.",
+    "uploadDocument": "Upload .txt / .md / .docx / .pdf",
+    "uploaded": "Loaded {{name}} ({{kb}} KB)",
+    "uploadFailed": "Could not read that file: {{error}}",
+    "saving": "Saving…",
+    "save": "Save"
+  },
+  "settings": {
+    "title": "Settings",
+    "deepgramKey": "Deepgram API key",
+    "anthropicKey": "Override Anthropic key (optional)",
+    "language": "Language",
+    "save": "Save"
+  },
+  "end": {
+    "title": "End this session?",
+    "item1": "Stops transcription",
+    "item2": "Clears all answer cards",
+    "item3": "Clears live transcript",
+    "alsoClearContext": "Also clear pasted Job Description, Resume, and Role/Company",
+    "keysNote": "API keys and voice sample are kept either way.",
+    "cancel": "Cancel",
+    "confirm": "End Session"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "fr": "Français",
+    "zh": "中文",
+    "hi": "हिन्दी",
+    "ar": "العربية",
+    "it": "Italiano",
+    "de": "Deutsch",
+    "nl": "Nederlands"
+  }
+}

@@ -3,7 +3,7 @@
 use crate::audio::{self, AudioCaptureSession, AudioChannel, PcmFrame};
 use crate::config;
 use crate::llm::TranscriptTurn;
-use crate::stt::{self, SttConfig, SttEvent, SttProvider, SttSession};
+use crate::stt::{self, SttConfig, SttEvent, SttProvider};
 use parking_lot::Mutex;
 use serde::Serialize;
 use std::collections::VecDeque;
@@ -95,16 +95,24 @@ pub async fn start_capture<R: Runtime>(
     let cfg = config::load().map_err(|e| e.to_string())?;
     let api_key = cfg
         .deepgram_api_key
+        .clone()
         .ok_or_else(|| "Deepgram API key not set in Settings".to_string())?;
+    let lang = cfg.language.clone().unwrap_or_else(|| "en".into());
 
     // Open two STT sessions, one per channel.
     let provider = stt::deepgram::DeepgramProvider;
     let mut mic_session = provider
-        .open(AudioChannel::Mic, SttConfig::deepgram_default(api_key.clone()))
+        .open(
+            AudioChannel::Mic,
+            SttConfig::deepgram_default(api_key.clone()).with_language(&lang),
+        )
         .await
         .map_err(|e| e.to_string())?;
     let mut sys_session = provider
-        .open(AudioChannel::System, SttConfig::deepgram_default(api_key))
+        .open(
+            AudioChannel::System,
+            SttConfig::deepgram_default(api_key).with_language(&lang),
+        )
         .await
         .map_err(|e| e.to_string())?;
 
@@ -319,8 +327,11 @@ pub async fn ask<R: Runtime>(
         job_description: cfg.job_description.clone(),
         resume: cfg.resume.clone(),
         role_context: cfg.role_context.clone(),
+        voice_sample: cfg.voice_sample.clone(),
+        language: cfg.language.clone(),
         transcript_window,
         trigger,
+        image_b64: None,
     };
 
     let anthropic_key = cfg
@@ -485,6 +496,83 @@ async fn forward_stream<R: Runtime>(app: AppHandle<R>, mut rx: mpsc::Receiver<Ll
             }
         }
     }
+}
+
+/// Screenshot-driven vision request. Mirrors `ask` but ships an image_b64 to
+/// Anthropic. Falls back to Mistral text-only with a note that the screenshot
+/// could not be analysed (HF Mistral has no vision).
+#[tauri::command]
+pub async fn ask_with_image<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, SessionState>,
+    mode: String,
+    trigger: String,
+    image_b64: String,
+) -> Result<(), String> {
+    let cfg = config::load().map_err(|e| e.to_string())?;
+    let mode_enum = match mode.as_str() {
+        "interview" => Mode::Interview,
+        "study" => Mode::Study,
+        _ => Mode::Meeting,
+    };
+
+    let transcript_window: Vec<TranscriptTurn> = {
+        match state.inner.lock().as_ref() {
+            Some(s) => s.transcript_buffer.lock().iter().cloned().collect(),
+            None => Vec::new(),
+        }
+    };
+
+    let request = LlmRequest {
+        mode: mode_enum,
+        job_description: cfg.job_description.clone(),
+        resume: cfg.resume.clone(),
+        role_context: cfg.role_context.clone(),
+        voice_sample: cfg.voice_sample.clone(),
+        language: cfg.language.clone(),
+        transcript_window,
+        trigger,
+        image_b64: Some(image_b64),
+    };
+
+    let anthropic_key = cfg
+        .anthropic_override_key
+        .clone()
+        .unwrap_or_else(|| ANTHROPIC_KEY.to_string());
+    let primary = AnthropicProvider::new(anthropic_key);
+
+    let app_for_orchestrator = app.clone();
+    let request_for_fallback = request.clone();
+
+    tokio::spawn(async move {
+        match primary.stream(request).await {
+            Ok(rx) => {
+                let outcome = forward_stream_with_first_token_timeout(
+                    app_for_orchestrator.clone(),
+                    rx,
+                    std::time::Duration::from_millis(FALLBACK_TIMEOUT_MS),
+                )
+                .await;
+                if matches!(outcome, StreamOutcome::Timeout | StreamOutcome::ImmediateError) {
+                    let mut fallback_req = request_for_fallback;
+                    fallback_req.image_b64 = None;
+                    fallback_req.trigger = format!(
+                        "(Screenshot could not be analysed by the fallback model — answer based on transcript only.) {}",
+                        fallback_req.trigger
+                    );
+                    fallback(app_for_orchestrator, fallback_req).await;
+                }
+            }
+            Err(e) => {
+                log::warn!("Anthropic vision stream() returned err: {e}");
+                let mut fallback_req = request_for_fallback;
+                fallback_req.image_b64 = None;
+                fallback(app_for_orchestrator, fallback_req).await;
+            }
+        }
+    });
+
+    Ok(())
 }
 
 async fn fallback<R: Runtime>(app: AppHandle<R>, request: LlmRequest) {

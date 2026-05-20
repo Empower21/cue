@@ -1,0 +1,59 @@
+{
+  "app": { "title": "cue", "start": "Iniciar", "stop": "Detener", "end": "Finalizar" },
+  "modes": { "listen": "Escuchar", "ask": "Preguntar", "auto": "Auto", "label": "Modo" },
+  "audio": { "you": "tú", "them": "ellos" },
+  "panel": {
+    "context": "Contexto",
+    "answer": "Responder",
+    "screenshot": "Captura",
+    "ask": "Preguntar",
+    "askPlaceholder": "Pregunta lo que quieras (Cmd/Ctrl+Enter para enviar)",
+    "pressStart": "Pulsa Iniciar para empezar.",
+    "errorLabel": "Error",
+    "thinking": "Pensando…",
+    "analysingScreen": "Leyendo la pantalla…",
+    "visibilityNotice": "Esta es la versión web de cue — visible al compartir pantalla. Úsala en un móvil, tableta o pantalla secundaria que el entrevistador no comparta. Para invisibilidad a nivel de sistema en la misma máquina, instala la app de escritorio.",
+    "getDesktop": "Descargar app"
+  },
+  "context": {
+    "title": "Contexto",
+    "jd": "Descripción del puesto",
+    "resume": "Currículum",
+    "role": "Rol / empresa",
+    "voiceSample": "Muestra de voz (texto escrito por ti — define tu tono)",
+    "voiceSampleHelp": "Pega unos párrafos que hayas escrito tú, o sube un documento. cue lo usa para que las respuestas suenen como tú.",
+    "uploadDocument": "Subir .txt / .md / .docx / .pdf",
+    "uploaded": "Cargado {{name}} ({{kb}} KB)",
+    "uploadFailed": "No se pudo leer el archivo: {{error}}",
+    "saving": "Guardando…",
+    "save": "Guardar"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "deepgramKey": "Clave API de Deepgram",
+    "anthropicKey": "Sobrescribir clave de Anthropic (opcional)",
+    "language": "Idioma",
+    "save": "Guardar"
+  },
+  "end": {
+    "title": "¿Finalizar esta sesión?",
+    "item1": "Detiene la transcripción",
+    "item2": "Borra todas las respuestas",
+    "item3": "Borra la transcripción en directo",
+    "alsoClearContext": "Borrar también la descripción del puesto, currículum y rol/empresa",
+    "keysNote": "Las claves API y la muestra de voz se conservan en ambos casos.",
+    "cancel": "Cancelar",
+    "confirm": "Finalizar sesión"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "fr": "Français",
+    "zh": "中文",
+    "hi": "हिन्दी",
+    "ar": "العربية",
+    "it": "Italiano",
+    "de": "Deutsch",
+    "nl": "Nederlands"
+  }
+}

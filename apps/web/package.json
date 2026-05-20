@@ -11,10 +11,15 @@
     "lint": "next lint --max-warnings=0"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
     "@cue/shared": "workspace:*",
+    "i18next": "^23.16.4",
+    "jszip": "^3.10.1",
     "next": "^15.1.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-i18next": "^15.1.1",
+    "react-markdown": "^9.0.1"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

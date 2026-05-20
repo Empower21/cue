@@ -1,0 +1,59 @@
+{
+  "app": { "title": "cue", "start": "开始", "stop": "停止", "end": "结束" },
+  "modes": { "listen": "聆听", "ask": "提问", "auto": "自动", "label": "模式" },
+  "audio": { "you": "你", "them": "对方" },
+  "panel": {
+    "context": "上下文",
+    "answer": "回答",
+    "screenshot": "截屏",
+    "ask": "提问",
+    "askPlaceholder": "随便问 (Cmd/Ctrl+Enter 发送)",
+    "pressStart": "点击「开始」启动。",
+    "errorLabel": "错误",
+    "thinking": "思考中…",
+    "analysingScreen": "正在读取屏幕…",
+    "visibilityNotice": "这是 cue 的网页版,在共享屏幕时可见。请在面试官无法看到的手机、平板或第二块屏幕上打开。如需在同一台电脑上实现系统级隐身,请安装桌面应用。",
+    "getDesktop": "下载桌面版"
+  },
+  "context": {
+    "title": "上下文",
+    "jd": "职位描述",
+    "resume": "简历",
+    "role": "角色 / 公司",
+    "voiceSample": "语气样本(你自己的文字 — 用于模仿你的语气)",
+    "voiceSampleHelp": "粘贴你自己写过的几段文字,或上传一份文档。cue 会模仿你的语气作答。",
+    "uploadDocument": "上传 .txt / .md / .docx / .pdf",
+    "uploaded": "已加载 {{name}} ({{kb}} KB)",
+    "uploadFailed": "无法读取该文件:{{error}}",
+    "saving": "保存中…",
+    "save": "保存"
+  },
+  "settings": {
+    "title": "设置",
+    "deepgramKey": "Deepgram API 密钥",
+    "anthropicKey": "覆盖 Anthropic 密钥(可选)",
+    "language": "语言",
+    "save": "保存"
+  },
+  "end": {
+    "title": "结束此次会话?",
+    "item1": "停止转录",
+    "item2": "清空所有回答",
+    "item3": "清空实时字幕",
+    "alsoClearContext": "同时清空已粘贴的职位描述、简历和角色/公司",
+    "keysNote": "API 密钥和语气样本始终保留。",
+    "cancel": "取消",
+    "confirm": "结束会话"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "fr": "Français",
+    "zh": "中文",
+    "hi": "हिन्दी",
+    "ar": "العربية",
+    "it": "Italiano",
+    "de": "Deutsch",
+    "nl": "Nederlands"
+  }
+}

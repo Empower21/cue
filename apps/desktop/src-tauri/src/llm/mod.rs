@@ -15,8 +15,19 @@ pub struct LlmRequest {
     pub job_description: Option<String>,
     pub resume: Option<String>,
     pub role_context: Option<String>,
+    /// Writing sample for voice/tone matching. Lives in L2 cache tier alongside
+    /// the rest of user context, so it costs nothing per re-ask.
+    pub voice_sample: Option<String>,
+    /// BCP-47 language tag. When Some, the model is instructed to respond in
+    /// this language; the live trigger / transcript still arrives in whatever
+    /// language STT produced.
+    pub language: Option<String>,
     pub transcript_window: Vec<TranscriptTurn>,
     pub trigger: String,
+    /// Base64-encoded PNG (no data: prefix). When present, the Anthropic
+    /// provider sends a multimodal message and the trigger becomes the prompt
+    /// applied to the image (e.g. "Solve this coding problem on my screen.").
+    pub image_b64: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]

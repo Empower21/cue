@@ -128,13 +128,19 @@ impl LlmProvider for AnthropicProvider {
 }
 
 fn build_payload(req: &LlmRequest, max_tokens: u32) -> Value {
-    // L1: system prompt (1h cache)
-    // L2: user context block (JD + resume + role) (1h cache)
+    // L1: system prompt + language directive (1h cache)
+    // L2: user context block (JD + resume + role + voice_sample) (1h cache)
     // L3: rolling transcript (5min cache)
-    // L4: live trigger (no cache)
+    // L4: live trigger (+ optional image) (no cache)
+    let mut sys_text = prompts::system_prompt(req.mode).to_string();
+    let lang = prompts::language_directive(req);
+    if !lang.is_empty() {
+        sys_text.push_str("\n\n");
+        sys_text.push_str(&lang);
+    }
     let mut system_blocks = vec![json!({
         "type": "text",
-        "text": prompts::system_prompt(req.mode),
+        "text": sys_text,
         "cache_control": { "type": "ephemeral" }
     })];
 
@@ -156,6 +162,20 @@ fn build_payload(req: &LlmRequest, max_tokens: u32) -> Value {
             "cache_control": { "type": "ephemeral" }
         }));
     }
+
+    // Multimodal trigger when a screenshot is attached. The image is sent first
+    // so the model sees it before reading the instructions about it.
+    if let Some(b64) = req.image_b64.as_deref().filter(|x| !x.is_empty()) {
+        user_content.push(json!({
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": "image/png",
+                "data": b64
+            }
+        }));
+    }
+
     user_content.push(json!({
         "type": "text",
         "text": format!("## Trigger\n{}", req.trigger)

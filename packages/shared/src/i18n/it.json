@@ -1,0 +1,59 @@
+{
+  "app": { "title": "cue", "start": "Avvia", "stop": "Stop", "end": "Chiudi" },
+  "modes": { "listen": "Ascolta", "ask": "Chiedi", "auto": "Auto", "label": "Modalità" },
+  "audio": { "you": "tu", "them": "loro" },
+  "panel": {
+    "context": "Contesto",
+    "answer": "Rispondi",
+    "screenshot": "Schermata",
+    "ask": "Chiedi",
+    "askPlaceholder": "Chiedi qualsiasi cosa (Cmd/Ctrl+Invio per inviare)",
+    "pressStart": "Premi Avvia per iniziare.",
+    "errorLabel": "Errore",
+    "thinking": "Sto pensando…",
+    "analysingScreen": "Sto leggendo lo schermo…",
+    "visibilityNotice": "Questa è la versione web di cue — visibile in una condivisione schermo. Aprila su un telefono, tablet o secondo schermo che l'intervistatore non sta condividendo. Per l'invisibilità a livello di sistema sulla stessa macchina, installa l'app desktop.",
+    "getDesktop": "Scarica l'app"
+  },
+  "context": {
+    "title": "Contesto",
+    "jd": "Descrizione del lavoro",
+    "resume": "Curriculum",
+    "role": "Ruolo / azienda",
+    "voiceSample": "Campione di voce (un tuo scritto — serve per il tono)",
+    "voiceSampleHelp": "Incolla qualche paragrafo scritto da te, o carica un documento. cue lo usa per rispondere con il tuo stile.",
+    "uploadDocument": "Carica .txt / .md / .docx / .pdf",
+    "uploaded": "Caricato {{name}} ({{kb}} KB)",
+    "uploadFailed": "Impossibile leggere il file: {{error}}",
+    "saving": "Salvataggio…",
+    "save": "Salva"
+  },
+  "settings": {
+    "title": "Impostazioni",
+    "deepgramKey": "Chiave API Deepgram",
+    "anthropicKey": "Sovrascrivi chiave Anthropic (opzionale)",
+    "language": "Lingua",
+    "save": "Salva"
+  },
+  "end": {
+    "title": "Terminare questa sessione?",
+    "item1": "Interrompe la trascrizione",
+    "item2": "Cancella tutte le risposte",
+    "item3": "Cancella la trascrizione live",
+    "alsoClearContext": "Cancella anche descrizione del lavoro, curriculum e ruolo/azienda",
+    "keysNote": "Chiavi API e campione di voce restano in entrambi i casi.",
+    "cancel": "Annulla",
+    "confirm": "Termina sessione"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "fr": "Français",
+    "zh": "中文",
+    "hi": "हिन्दी",
+    "ar": "العربية",
+    "it": "Italiano",
+    "de": "Deutsch",
+    "nl": "Nederlands"
+  }
+}

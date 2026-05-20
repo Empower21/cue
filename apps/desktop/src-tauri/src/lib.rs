@@ -1,8 +1,10 @@
 mod audio;
 mod config;
+mod documents;
 mod llm;
 mod overlay;
 mod question_detector;
+mod screenshot;
 mod session;
 mod stt;
 
@@ -18,6 +20,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .manage(session::SessionState::new())
         .invoke_handler(tauri::generate_handler![
             session::start_capture,
@@ -25,6 +28,9 @@ pub fn run() {
             session::save_config,
             session::load_config,
             session::ask,
+            session::ask_with_image,
+            documents::read_document,
+            screenshot::capture_screen,
             overlay::drag::start_native_drag,
         ])
         .setup(|app| {

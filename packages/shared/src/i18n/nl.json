@@ -1,0 +1,59 @@
+{
+  "app": { "title": "cue", "start": "Start", "stop": "Stop", "end": "Beëindigen" },
+  "modes": { "listen": "Luisteren", "ask": "Vragen", "auto": "Auto", "label": "Modus" },
+  "audio": { "you": "jij", "them": "zij" },
+  "panel": {
+    "context": "Context",
+    "answer": "Beantwoord",
+    "screenshot": "Schermafbeelding",
+    "ask": "Vraag",
+    "askPlaceholder": "Vraag iets (Cmd/Ctrl+Enter om te versturen)",
+    "pressStart": "Druk op Start om te beginnen.",
+    "errorLabel": "Fout",
+    "thinking": "Aan het denken…",
+    "analysingScreen": "Scherm aan het lezen…",
+    "visibilityNotice": "Dit is de browserversie van cue — zichtbaar bij schermdelen. Open hem op een telefoon, tablet of tweede scherm dat de interviewer niet deelt. Voor onzichtbaarheid op besturingssysteemniveau op dezelfde machine, installeer de desktop-app.",
+    "getDesktop": "Desktop-app halen"
+  },
+  "context": {
+    "title": "Context",
+    "jd": "Functieomschrijving",
+    "resume": "CV",
+    "role": "Rol / bedrijf",
+    "voiceSample": "Stem­voorbeeld (je eigen schrijfsel — voor de toon)",
+    "voiceSampleHelp": "Plak een paar door jou geschreven alinea's, of upload een document. cue gebruikt het om in jouw stijl te antwoorden.",
+    "uploadDocument": "Upload .txt / .md / .docx / .pdf",
+    "uploaded": "{{name}} geladen ({{kb}} KB)",
+    "uploadFailed": "Bestand kon niet worden gelezen: {{error}}",
+    "saving": "Opslaan…",
+    "save": "Opslaan"
+  },
+  "settings": {
+    "title": "Instellingen",
+    "deepgramKey": "Deepgram API-sleutel",
+    "anthropicKey": "Anthropic-sleutel overschrijven (optioneel)",
+    "language": "Taal",
+    "save": "Opslaan"
+  },
+  "end": {
+    "title": "Deze sessie beëindigen?",
+    "item1": "Stopt de transcriptie",
+    "item2": "Wist alle antwoorden",
+    "item3": "Wist het live-transcript",
+    "alsoClearContext": "Wis ook de geplakte functieomschrijving, cv en rol/bedrijf",
+    "keysNote": "API-sleutels en stem­voorbeeld blijven in beide gevallen behouden.",
+    "cancel": "Annuleren",
+    "confirm": "Sessie beëindigen"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "fr": "Français",
+    "zh": "中文",
+    "hi": "हिन्दी",
+    "ar": "العربية",
+    "it": "Italiano",
+    "de": "Deutsch",
+    "nl": "Nederlands"
+  }
+}

@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export type Mode = 'listen' | 'ask' | 'auto';
 
@@ -7,28 +8,25 @@ interface ModeSelectorProps {
   setMode: Dispatch<SetStateAction<Mode>>;
 }
 
-const MODES: ReadonlyArray<{ id: Mode; label: string }> = [
-  { id: 'listen', label: 'Listen' },
-  { id: 'ask', label: 'Ask' },
-  { id: 'auto', label: 'Auto' },
-];
+const MODE_IDS: ReadonlyArray<Mode> = ['listen', 'ask', 'auto'];
 
 export function ModeSelector({ mode, setMode }: ModeSelectorProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex gap-1 rounded-md bg-cue-surface p-1">
-      {MODES.map((m) => (
+      {MODE_IDS.map((id) => (
         <button
-          key={m.id}
+          key={id}
           type="button"
-          onClick={() => setMode(m.id)}
+          onClick={() => setMode(id)}
           className={
             'flex-1 rounded px-3 py-1 text-xs transition ' +
-            (mode === m.id
+            (mode === id
               ? 'bg-cue-accent text-white'
               : 'text-cue-muted hover:text-cue-text')
           }
         >
-          {m.label}
+          {t(`modes.${id}`)}
         </button>
       ))}
     </div>

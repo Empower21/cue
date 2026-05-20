@@ -1,0 +1,17 @@
+{
+  "name": "cue — interview & meeting copilot",
+  "short_name": "cue",
+  "description": "Real-time interview and meeting copilot in your browser.",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#0b0b0e",
+  "theme_color": "#7c5cff",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
