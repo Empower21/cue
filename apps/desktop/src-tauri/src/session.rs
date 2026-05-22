@@ -285,12 +285,41 @@ use crate::llm::{
     LlmRequest, Mode,
 };
 
-const ANTHROPIC_KEY: &str = env!(
-    "CUE_ANTHROPIC_KEY",
-    "set CUE_ANTHROPIC_KEY at build time (see DEV-SETUP.md)"
-);
-const HF_TOKEN: &str = env!("CUE_HF_TOKEN", "set CUE_HF_TOKEN at build time");
+// Compile-time defaults (option_env! = None if unset, no build failure). This
+// lets us ship MSI binaries WITHOUT baking any key — public redistribution-safe.
+// At runtime we look in this order:
+//   1. ~/.cue/config.toml override (the user's own paste from Settings)
+//   2. process env var (ANTHROPIC_API_KEY / HUGGINGFACE_TOKEN — local dev)
+//   3. option_env! bake-in (CUE_ANTHROPIC_KEY / CUE_HF_TOKEN — deployer opt-in)
+//   4. empty string → API call returns 401 → UI surfaces "key needed" error
+const BUILD_ANTHROPIC_KEY: Option<&str> = option_env!("CUE_ANTHROPIC_KEY");
+const BUILD_HF_TOKEN: Option<&str> = option_env!("CUE_HF_TOKEN");
+
+fn resolve_anthropic_key(cfg_override: Option<&str>) -> String {
+    cfg_override
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(ToString::to_string)
+        .or_else(|| std::env::var("ANTHROPIC_API_KEY").ok().filter(|s| !s.is_empty()))
+        .or_else(|| BUILD_ANTHROPIC_KEY.filter(|s| !s.is_empty()).map(ToString::to_string))
+        .unwrap_or_default()
+}
+
+fn resolve_hf_token() -> String {
+    std::env::var("HUGGINGFACE_TOKEN")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .or_else(|| BUILD_HF_TOKEN.filter(|s| !s.is_empty()).map(ToString::to_string))
+        .unwrap_or_default()
+}
+
+/// First-token timeout for the text `ask` path. Anthropic usually sends within
+/// 2-4s; if 8s pass with nothing the request is almost certainly stuck.
 const FALLBACK_TIMEOUT_MS: u64 = 8_000;
+/// Vision calls (`ask_with_image`) need a longer leash — the model spends real
+/// time tokenising the image before producing the first text token. 20s is the
+/// empirical threshold where "still working" becomes "genuinely stuck".
+const VISION_FALLBACK_TIMEOUT_MS: u64 = 20_000;
 
 #[derive(Clone, Serialize)]
 pub struct AnswerEvent {
@@ -334,10 +363,20 @@ pub async fn ask<R: Runtime>(
         image_b64: None,
     };
 
-    let anthropic_key = cfg
-        .anthropic_override_key
-        .clone()
-        .unwrap_or_else(|| ANTHROPIC_KEY.to_string());
+    let anthropic_key = resolve_anthropic_key(cfg.anthropic_override_key.as_deref());
+    if anthropic_key.is_empty() {
+        let _ = app.emit(
+            "answer_event",
+            AnswerEvent {
+                kind: "error".into(),
+                text: None,
+                reason: Some(
+                    "Anthropic API key not configured — open Settings (⚙) and paste your sk-ant-... key, or set ANTHROPIC_API_KEY in your shell env.".into(),
+                ),
+            },
+        );
+        return Ok(());
+    }
     let primary = AnthropicProvider::new(anthropic_key);
 
     let app_for_orchestrator = app.clone();
@@ -535,10 +574,20 @@ pub async fn ask_with_image<R: Runtime>(
         image_b64: Some(image_b64),
     };
 
-    let anthropic_key = cfg
-        .anthropic_override_key
-        .clone()
-        .unwrap_or_else(|| ANTHROPIC_KEY.to_string());
+    let anthropic_key = resolve_anthropic_key(cfg.anthropic_override_key.as_deref());
+    if anthropic_key.is_empty() {
+        let _ = app.emit(
+            "answer_event",
+            AnswerEvent {
+                kind: "error".into(),
+                text: None,
+                reason: Some(
+                    "Anthropic API key not configured — open Settings (⚙) and paste your sk-ant-... key. Vision requires a real key (the HuggingFace fallback can't read images).".into(),
+                ),
+            },
+        );
+        return Ok(());
+    }
     let primary = AnthropicProvider::new(anthropic_key);
 
     let app_for_orchestrator = app.clone();
@@ -550,7 +599,10 @@ pub async fn ask_with_image<R: Runtime>(
                 let outcome = forward_stream_with_first_token_timeout(
                     app_for_orchestrator.clone(),
                     rx,
-                    std::time::Duration::from_millis(FALLBACK_TIMEOUT_MS),
+                    // Vision tokenisation is slow — use the longer timeout so
+                    // a working vision call isn't aborted just because it
+                    // didn't beat the text-mode 8s budget.
+                    std::time::Duration::from_millis(VISION_FALLBACK_TIMEOUT_MS),
                 )
                 .await;
                 if matches!(outcome, StreamOutcome::Timeout | StreamOutcome::ImmediateError) {
@@ -565,9 +617,14 @@ pub async fn ask_with_image<R: Runtime>(
             }
             Err(e) => {
                 log::warn!("Anthropic vision stream() returned err: {e}");
-                let mut fallback_req = request_for_fallback;
-                fallback_req.image_b64 = None;
-                fallback(app_for_orchestrator, fallback_req).await;
+                let _ = app_for_orchestrator.emit(
+                    "answer_event",
+                    AnswerEvent {
+                        kind: "error".into(),
+                        text: None,
+                        reason: Some(format!("Vision call failed: {e}")),
+                    },
+                );
             }
         }
     });
@@ -584,7 +641,21 @@ async fn fallback<R: Runtime>(app: AppHandle<R>, request: LlmRequest) {
             reason: None,
         },
     );
-    let provider = HuggingFaceProvider::new(HF_TOKEN.to_string());
+    let hf_token = resolve_hf_token();
+    if hf_token.is_empty() {
+        let _ = app.emit(
+            "answer_event",
+            AnswerEvent {
+                kind: "error".into(),
+                text: None,
+                reason: Some(
+                    "Anthropic stalled and no HuggingFace fallback token is configured. Set HUGGINGFACE_TOKEN in your env, or just rely on Anthropic for now.".into(),
+                ),
+            },
+        );
+        return;
+    }
+    let provider = HuggingFaceProvider::new(hf_token);
     match provider.stream(request).await {
         Ok(rx) => {
             forward_stream(app, rx).await;
