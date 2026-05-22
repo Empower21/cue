@@ -113,13 +113,17 @@ export function useCopilotState() {
 
   const start = useCallback(async () => {
     setError(null);
-    // Precedence: user override from Settings, else NEXT_PUBLIC_DEEPGRAM_API_KEY
-    // baked at build time (mirrors how the desktop reads ~/.cue/config.toml).
+    // Precedence: user override from Settings (localStorage, per-device) takes
+    // priority over any build-time env. NEXT_PUBLIC_DEEPGRAM_API_KEY is a
+    // CONVENIENCE for local `pnpm dev` only — if it ever gets set in Vercel's
+    // project env it ALSO gets baked into the public client bundle and any
+    // visitor can read it. Keep it in `apps/web/.env.local` (gitignored), do
+    // NOT add it to Vercel — production users supply their own key in Settings.
     const deepgramKey =
       config.deepgramKey?.trim() || process.env.NEXT_PUBLIC_DEEPGRAM_API_KEY?.trim();
     if (!deepgramKey) {
       setError(
-        'Deepgram API key not configured. Add it in Settings, or set NEXT_PUBLIC_DEEPGRAM_API_KEY in .env.local.',
+        'Deepgram API key needed — open ⚙ Settings and paste yours. Get one free at https://console.deepgram.com.',
       );
       return;
     }

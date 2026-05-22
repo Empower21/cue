@@ -42,9 +42,24 @@ function pickAnswerTrigger(transcript: TranscriptUtterance[]): string | null {
   return null;
 }
 
+type Purpose = 'interview' | 'meeting' | 'study';
+
+/// Default screenshot prompts per purpose. Mirror the web /app so users get
+/// consistent vision-call shapes whether they're on the desktop overlay or
+/// the mobile second-screen page.
+const SCREENSHOT_PROMPTS: Record<Purpose, string> = {
+  interview:
+    "Solve or explain whatever is currently on the candidate's screen. If it's a coding problem, give a runnable solution and walk through the approach in 3-5 bullets.",
+  meeting:
+    'Summarise what is on the screen in 3-5 bullets, then suggest a single insightful question or follow-up the user could say next.',
+  study:
+    'Explain whatever is on the screen step by step, then give one quick check question to reinforce understanding.',
+};
+
 export function OverlayPanel() {
   const { t } = useTranslation();
   const [mode, setMode] = useState<Mode>('listen');
+  const [purpose, setPurposeState] = useState<Purpose>('interview');
   const [running, setRunning] = useState(false);
   const [showContext, setShowContext] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -55,6 +70,28 @@ export function OverlayPanel() {
   const [collapsed, setCollapsed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [capturingScreen, setCapturingScreen] = useState(false);
+
+  // Hydrate purpose from ~/.cue/config.toml on mount. The Rust Config has had
+  // `mode: Option<String>` since the first build — surfacing it here was just
+  // the missing piece.
+  useEffect(() => {
+    void invoke<{ mode?: string }>('load_config').then((cfg) => {
+      const m = cfg.mode;
+      if (m === 'meeting' || m === 'study' || m === 'interview') {
+        setPurposeState(m);
+      }
+    });
+  }, []);
+
+  const setPurpose = (next: Purpose) => {
+    setPurposeState(next);
+    // Persist alongside everything else. The Rust side merges this into the
+    // existing config — we don't have to fetch + spread, save_config takes
+    // the whole struct and we only have the one field that changed.
+    void invoke<Record<string, unknown>>('load_config').then((cfg) => {
+      void invoke('save_config', { config: { ...cfg, mode: next } });
+    });
+  };
 
   const handleDragStart = async (e: React.MouseEvent) => {
     if (e.button !== 0) return;
@@ -106,14 +143,14 @@ export function OverlayPanel() {
     if (last.text.includes('?') || QUESTION_REGEX.test(last.text)) {
       lastTriggerAt.current = now;
       reset();
-      void invoke('ask', { mode: 'interview', trigger: last.text });
+      void invoke('ask', { mode: purpose, trigger: last.text });
     }
-  }, [transcript, mode, reset]);
+  }, [transcript, mode, purpose, reset]);
 
   const submitAsk = () => {
     if (!askInput.trim()) return;
     reset();
-    void invoke('ask', { mode: 'interview', trigger: askInput.trim() });
+    void invoke('ask', { mode: purpose, trigger: askInput.trim() });
     setAskInput('');
   };
 
@@ -127,7 +164,7 @@ export function OverlayPanel() {
     setError(null);
     lastTriggerAt.current = Date.now();
     reset();
-    void invoke('ask', { mode: 'interview', trigger });
+    void invoke('ask', { mode: purpose, trigger });
   };
 
   // Screenshot button: capture screen, send to vision model with a generic
@@ -139,11 +176,9 @@ export function OverlayPanel() {
     setCapturingScreen(true);
     try {
       const imageB64 = await invoke<string>('capture_screen');
-      const trigger = askInput.trim()
-        ? askInput.trim()
-        : "Solve or explain whatever is currently on the candidate's screen. If it's a coding problem, give a runnable solution and walk through the approach in 3-5 bullets.";
+      const trigger = askInput.trim() || SCREENSHOT_PROMPTS[purpose];
       reset();
-      await invoke('ask_with_image', { mode: 'interview', trigger, imageB64 });
+      await invoke('ask_with_image', { mode: purpose, trigger, imageB64 });
       setAskInput('');
     } catch (err) {
       setError(String(err));
@@ -240,6 +275,33 @@ export function OverlayPanel() {
           </button>
         </div>
       </header>
+
+      {/* Purpose row — chooses the system prompt persona. Disabled mid-session
+         to keep the Anthropic prompt cache hot; the user can change between
+         sessions via this row, or via Settings on platforms with no overlay. */}
+      <div className="mb-2 flex items-center gap-1 text-[10px]">
+        <span className="mr-1 text-cue-muted">{t('purpose.label')}:</span>
+        {(['interview', 'meeting', 'study'] as const).map((p) => {
+          const active = purpose === p;
+          return (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPurpose(p)}
+              disabled={running}
+              className={
+                'rounded-full border px-2 py-0.5 transition disabled:opacity-50 ' +
+                (active
+                  ? 'border-cue-accent bg-cue-accent/15 text-cue-text'
+                  : 'border-cue-subtle/60 text-cue-muted hover:text-cue-text')
+              }
+              title={t(`purpose.${p}Help`)}
+            >
+              {t(`purpose.${p}`)}
+            </button>
+          );
+        })}
+      </div>
 
       <ModeSelector mode={mode} setMode={setMode} />
 
