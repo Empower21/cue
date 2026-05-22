@@ -6,6 +6,7 @@
     "context": "Contexte",
     "answer": "Répondre",
     "screenshot": "Capture",
+    "screenshotHelp": "Capturez un onglet, une fenêtre ou l'écran entier et envoyez l'image au modèle. Si vous saisissez du texte dans Demander avant, il sert de prompt personnalisé ; sinon le modèle répond selon votre objectif actif.",
     "ask": "Demander",
     "askPlaceholder": "Posez votre question (Cmd/Ctrl+Entrée pour envoyer)",
     "pressStart": "Appuyez sur Démarrer pour commencer.",
@@ -48,6 +49,15 @@
     "keysNote": "Les clés API et l'échantillon de voix sont conservés dans tous les cas.",
     "cancel": "Annuler",
     "confirm": "Terminer la session"
+  },
+  "purpose": {
+    "label": "Objectif",
+    "interview": "Entretien",
+    "meeting": "Réunion",
+    "study": "Étude",
+    "interviewHelp": "Phrase d'ouverture à dire mot pour mot, plus 2 à 4 puces de soutien fondées sur le CV et l'offre.",
+    "meetingHelp": "Résumé concis + une seule question de suivi pertinente que l'utilisateur pourrait poser.",
+    "studyHelp": "Explication étape par étape + une question rapide pour renforcer."
   },
   "languages": {
     "en": "English",

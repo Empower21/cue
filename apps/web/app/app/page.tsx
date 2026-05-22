@@ -197,6 +197,35 @@ export default function CopilotPage() {
 
       <div className="flex flex-1 flex-col gap-4 px-4 py-4 sm:px-6 lg:grid lg:grid-cols-[1fr_1.1fr] lg:gap-6">
         <section className="flex flex-col rounded-xl border border-cue-subtle/30 bg-cue-surface/40 p-4">
+          {/* Purpose picker — chooses which system prompt the server uses.
+             Interview: tight opener + supporting bullets, grounded in resume/JD.
+             Meeting:   summarise + suggest a follow-up.
+             Study:     step-by-step + a check question.
+             Persisted in localStorage so users default to their main use case. */}
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-cue-muted">{t('purpose.label')}:</span>
+            {(['interview', 'meeting', 'study'] as const).map((p) => {
+              const active = (config.purpose ?? 'interview') === p;
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => updateConfig({ purpose: p })}
+                  disabled={running}
+                  className={
+                    'rounded-full border px-3 py-1 transition disabled:opacity-50 ' +
+                    (active
+                      ? 'border-cue-accent bg-cue-accent/15 text-cue-text'
+                      : 'border-cue-subtle/60 text-cue-muted hover:text-cue-text')
+                  }
+                  title={t(`purpose.${p}Help`)}
+                >
+                  {t(`purpose.${p}`)}
+                </button>
+              );
+            })}
+          </div>
+
           <ModeSelector mode={mode} setMode={setMode} />
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -217,8 +246,9 @@ export default function CopilotPage() {
             </button>
             <button
               type="button"
-              onClick={screenshot}
+              onClick={() => void screenshot(askInput.trim() || undefined)}
               className="rounded-md border border-cue-subtle/50 px-3 py-1.5 text-sm hover:border-cue-accent"
+              title={t('panel.screenshotHelp')}
             >
               {t('panel.screenshot')}
             </button>

@@ -6,6 +6,7 @@
     "context": "Context",
     "answer": "Beantwoord",
     "screenshot": "Schermafbeelding",
+    "screenshotHelp": "Leg een tabblad, venster of volledig scherm vast en stuur het naar het model. Als je eerst iets in Vragen typt, wordt dat als aangepaste prompt gebruikt; anders antwoordt het model op basis van je huidige doel.",
     "ask": "Vraag",
     "askPlaceholder": "Vraag iets (Cmd/Ctrl+Enter om te versturen)",
     "pressStart": "Druk op Start om te beginnen.",
@@ -48,6 +49,15 @@
     "keysNote": "API-sleutels en stem­voorbeeld blijven in beide gevallen behouden.",
     "cancel": "Annuleren",
     "confirm": "Sessie beëindigen"
+  },
+  "purpose": {
+    "label": "Doel",
+    "interview": "Sollicitatiegesprek",
+    "meeting": "Meeting",
+    "study": "Studie",
+    "interviewHelp": "Bondige openingszin die je woord voor woord kunt uitspreken, plus 2-4 ondersteunende punten gebaseerd op cv en functieomschrijving.",
+    "meetingHelp": "Bondige samenvatting + één scherpe vervolgvraag die de gebruiker hierna kan stellen.",
+    "studyHelp": "Stap-voor-stap uitleg + een korte controlevraag om de stof te verankeren."
   },
   "languages": {
     "en": "English",

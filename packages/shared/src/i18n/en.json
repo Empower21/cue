@@ -6,6 +6,7 @@
     "context": "Context",
     "answer": "Answer",
     "screenshot": "Screenshot",
+    "screenshotHelp": "Capture a Tab, Window, or Entire Screen and send it to the model. Typing into Ask first uses that text as the custom prompt; otherwise the model answers based on your current purpose.",
     "ask": "Ask",
     "askPlaceholder": "Ask anything (Cmd/Ctrl+Enter to send)",
     "pressStart": "Press Start to begin.",
@@ -48,6 +49,15 @@
     "keysNote": "API keys and voice sample are kept either way.",
     "cancel": "Cancel",
     "confirm": "End Session"
+  },
+  "purpose": {
+    "label": "Purpose",
+    "interview": "Interview",
+    "meeting": "Meeting",
+    "study": "Study",
+    "interviewHelp": "Tight opener you can deliver verbatim, plus 2-4 supporting bullets grounded in resume/JD.",
+    "meetingHelp": "Concise summary + a single insightful follow-up the user could say next.",
+    "studyHelp": "Step-by-step explanation + a quick check question to reinforce."
   },
   "languages": {
     "en": "English",

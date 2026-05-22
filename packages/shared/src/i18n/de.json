@@ -6,6 +6,7 @@
     "context": "Kontext",
     "answer": "Antworten",
     "screenshot": "Bildschirmfoto",
+    "screenshotHelp": "Erfasse einen Tab, ein Fenster oder den gesamten Bildschirm und schicke ihn ans Modell. Wenn du zuerst etwas bei Fragen eingibst, wird das als Custom-Prompt verwendet; sonst antwortet das Modell gemäß deinem aktuellen Zweck.",
     "ask": "Fragen",
     "askPlaceholder": "Frag etwas (Cmd/Strg+Enter zum Senden)",
     "pressStart": "Drücke auf »Start«, um zu beginnen.",
@@ -48,6 +49,15 @@
     "keysNote": "API-Schlüssel und Stimm-Probe bleiben in beiden Fällen erhalten.",
     "cancel": "Abbrechen",
     "confirm": "Sitzung beenden"
+  },
+  "purpose": {
+    "label": "Zweck",
+    "interview": "Interview",
+    "meeting": "Meeting",
+    "study": "Lernen",
+    "interviewHelp": "Knackiger Eröffnungssatz zum wortwörtlichen Vortragen, plus 2-4 stützende Bullets aus Lebenslauf/Stellenbeschreibung.",
+    "meetingHelp": "Knappe Zusammenfassung + eine einzige treffende Anschlussfrage, die der Nutzer als Nächstes stellen könnte.",
+    "studyHelp": "Schritt-für-Schritt-Erklärung + eine schnelle Verständnisfrage zum Festigen."
   },
   "languages": {
     "en": "English",

@@ -6,6 +6,7 @@
     "context": "上下文",
     "answer": "回答",
     "screenshot": "截屏",
+    "screenshotHelp": "捕获标签页、窗口或整个屏幕并发送给模型。如果在「提问」中先输入文字,则作为自定义提示;否则模型根据当前用途回答。",
     "ask": "提问",
     "askPlaceholder": "随便问 (Cmd/Ctrl+Enter 发送)",
     "pressStart": "点击「开始」启动。",
@@ -48,6 +49,15 @@
     "keysNote": "API 密钥和语气样本始终保留。",
     "cancel": "取消",
     "confirm": "结束会话"
+  },
+  "purpose": {
+    "label": "用途",
+    "interview": "面试",
+    "meeting": "会议",
+    "study": "学习",
+    "interviewHelp": "一句可直接照念的开场白,加 2-4 条基于简历/职位描述的支持要点。",
+    "meetingHelp": "简明摘要 + 一条用户可以接着说的精辟跟进问题。",
+    "studyHelp": "逐步讲解 + 一道快速检验题来巩固。"
   },
   "languages": {
     "en": "English",

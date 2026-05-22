@@ -6,6 +6,7 @@
     "context": "Contexto",
     "answer": "Responder",
     "screenshot": "Captura",
+    "screenshotHelp": "Captura una pestaña, ventana o pantalla entera y envíala al modelo. Si escribes algo en Preguntar antes, se usa como prompt personalizado; si no, el modelo responde según tu propósito actual.",
     "ask": "Preguntar",
     "askPlaceholder": "Pregunta lo que quieras (Cmd/Ctrl+Enter para enviar)",
     "pressStart": "Pulsa Iniciar para empezar.",
@@ -48,6 +49,15 @@
     "keysNote": "Las claves API y la muestra de voz se conservan en ambos casos.",
     "cancel": "Cancelar",
     "confirm": "Finalizar sesión"
+  },
+  "purpose": {
+    "label": "Propósito",
+    "interview": "Entrevista",
+    "meeting": "Reunión",
+    "study": "Estudio",
+    "interviewHelp": "Frase de apertura que puedes decir literal, más 2-4 viñetas de apoyo basadas en CV y descripción del puesto.",
+    "meetingHelp": "Resumen conciso + una única pregunta de seguimiento perspicaz que el usuario podría hacer.",
+    "studyHelp": "Explicación paso a paso + una pregunta rápida para reforzar."
   },
   "languages": {
     "en": "English",

@@ -6,6 +6,7 @@
     "context": "Contesto",
     "answer": "Rispondi",
     "screenshot": "Schermata",
+    "screenshotHelp": "Cattura una scheda, una finestra o l'intero schermo e inviala al modello. Se scrivi qualcosa in Chiedi prima, viene usato come prompt personalizzato; altrimenti il modello risponde in base allo scopo attivo.",
     "ask": "Chiedi",
     "askPlaceholder": "Chiedi qualsiasi cosa (Cmd/Ctrl+Invio per inviare)",
     "pressStart": "Premi Avvia per iniziare.",
@@ -48,6 +49,15 @@
     "keysNote": "Chiavi API e campione di voce restano in entrambi i casi.",
     "cancel": "Annulla",
     "confirm": "Termina sessione"
+  },
+  "purpose": {
+    "label": "Scopo",
+    "interview": "Colloquio",
+    "meeting": "Riunione",
+    "study": "Studio",
+    "interviewHelp": "Frase di apertura da dire alla lettera + 2-4 bullet di supporto basati su CV e descrizione del ruolo.",
+    "meetingHelp": "Sintesi concisa + una sola domanda di follow-up incisiva che l'utente può fare dopo.",
+    "studyHelp": "Spiegazione passo passo + una domanda di verifica veloce per rinforzare."
   },
   "languages": {
     "en": "English",

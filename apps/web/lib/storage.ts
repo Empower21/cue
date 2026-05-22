@@ -4,6 +4,11 @@
 
 import type { Language } from '@cue/shared';
 
+/// What cue should pretend to be when crafting a response. Each value maps
+/// to a different system prompt on the server (see /api/ask/route.ts).
+/// Default is "interview" because that was the original launch persona.
+export type CopilotPurpose = 'interview' | 'meeting' | 'study';
+
 export interface WebCopilotConfig {
   jd?: string;
   resume?: string;
@@ -14,6 +19,9 @@ export interface WebCopilotConfig {
   language?: Language;
   /// Mic capture toggle. Persisted — defaults to ON for a fresh user.
   captureMic?: boolean;
+  /// Persona: interview / meeting / study. Persisted across sessions so
+  /// users who almost always use it for one purpose don't have to re-pick.
+  purpose?: CopilotPurpose;
   /// System audio toggle is INTENTIONALLY NOT PERSISTED — it resets to OFF
   /// on every page load. Reason: screen share triggers Chrome's "Meeting
   /// detected" overlay and a system-wide share picker, and wakes up browser

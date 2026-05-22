@@ -29,6 +29,18 @@ export interface StreamingAnswer {
 
 const EMPTY_ANSWER: StreamingAnswer = { text: '', done: true };
 
+/// Default Vision prompt per purpose. Keep these tight — the system prompt
+/// (server-side) already establishes the persona, so the trigger only needs
+/// to nudge the model toward the right shape of output for the captured frame.
+const DEFAULT_SCREENSHOT_PROMPTS: Record<'interview' | 'meeting' | 'study', string> = {
+  interview:
+    "Solve or explain whatever is on this screenshot. If it's a coding problem, give a runnable solution and walk through the approach in 3-5 bullets.",
+  meeting:
+    'Summarise what is on this screenshot in 3-5 bullets, then suggest a single insightful question or follow-up the user could say next.',
+  study:
+    'Explain whatever is on this screenshot step by step, then give one quick check question to reinforce understanding.',
+};
+
 export function useCopilotState() {
   const [config, setConfigState] = useState<WebCopilotConfig>({});
   const [running, setRunning] = useState(false);
@@ -243,7 +255,7 @@ export function useCopilotState() {
           method: 'POST',
           headers,
           body: JSON.stringify({
-            mode: 'interview',
+            mode: config.purpose ?? 'interview',
             trigger,
             jd: config.jd,
             resume: config.resume,
@@ -317,13 +329,24 @@ export function useCopilotState() {
     void ask(trigger);
   }, [transcript, ask]);
 
-  const screenshot = useCallback(async () => {
+  const screenshot = useCallback(async (customPrompt?: string) => {
     setError(null);
     try {
+      // displaySurface + monitorTypeSurfaces hints force Chrome to show ALL
+      // three picker tabs (Chrome Tab, Window, Entire Screen) instead of
+      // defaulting to tab-only on Chrome 122+. selfBrowserSurface 'exclude'
+      // hides cue's own tab from the picker so the user can't accidentally
+      // capture the copilot.
       const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
+        video: {
+          displaySurface: 'monitor',
+          frameRate: { ideal: 1 },
+        },
         audio: false,
-      });
+        selfBrowserSurface: 'exclude',
+        surfaceSwitching: 'include',
+        monitorTypeSurfaces: 'include',
+      } as DisplayMediaStreamOptions);
       const track = stream.getVideoTracks()[0];
       if (!track) throw new Error('No video track from getDisplayMedia');
       // ImageCapture has spotty TS types; cast through unknown.
@@ -348,14 +371,16 @@ export function useCopilotState() {
       ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
       const dataUrl = canvas.toDataURL('image/png');
       const b64 = dataUrl.replace(/^data:image\/png;base64,/, '');
-      await ask(
-        "Solve or explain whatever is on this screenshot. If it's a coding problem, give a runnable solution and walk through the approach in 3-5 bullets.",
-        b64,
-      );
+      // The prompt mirrors the active purpose so a meeting user gets meeting-
+      // shaped insight ("summarise + suggest a follow-up") and an interview
+      // user gets a working answer. A typed askInput overrides everything.
+      const purpose = config.purpose ?? 'interview';
+      const prompt = customPrompt?.trim() || DEFAULT_SCREENSHOT_PROMPTS[purpose];
+      await ask(prompt, b64);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
-  }, [ask]);
+  }, [ask, config.purpose]);
 
   const resetSession = useCallback(() => {
     setTranscript([]);
