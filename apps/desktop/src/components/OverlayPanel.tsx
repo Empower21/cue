@@ -72,10 +72,10 @@ export function OverlayPanel() {
   const [capturingScreen, setCapturingScreen] = useState(false);
 
   // Capture-source picker state. When the user clicks Screenshot, we fetch
-  // the available monitors + windows from Rust, show them in a modal, and
-  // capture only after the user picks one. Mirrors the browser getDisplayMedia
-  // picker behaviour, so the user can choose Tab/Window/Entire Screen
-  // equivalents instead of always capturing the primary monitor.
+  // the available monitors + windows from Rust (with live thumbnails), show
+  // them in a modal, and capture the full-res image only after the user picks
+  // one. Mirrors the browser getDisplayMedia picker behaviour — thumbnails
+  // included.
   interface CaptureSource {
     id: string;
     kind: 'monitor' | 'window';
@@ -83,6 +83,7 @@ export function OverlayPanel() {
     width: number;
     height: number;
     primary: boolean;
+    thumbnail_b64: string | null;
   }
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerSources, setPickerSources] = useState<CaptureSource[]>([]);
@@ -638,9 +639,52 @@ interface CaptureSourcePickerProps {
     width: number;
     height: number;
     primary: boolean;
+    thumbnail_b64: string | null;
   }[];
   onPick: (id: string) => void;
   onCancel: () => void;
+}
+
+/// Tile representing one capture source. Square-ish thumbnail (16:9) above
+/// a one-line label. Clicking picks the source.
+function SourceTile({
+  source,
+  onPick,
+}: {
+  source: CaptureSourcePickerProps['sources'][number];
+  onPick: (id: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onPick(source.id)}
+      className="group flex flex-col gap-1 rounded border border-cue-subtle/40 bg-cue-surface/50 p-1.5 text-left transition hover:border-cue-accent hover:bg-cue-accent/10"
+      title={`${source.label} (${source.width}×${source.height})`}
+    >
+      <div className="relative aspect-video w-full overflow-hidden rounded bg-black/40">
+        {source.thumbnail_b64 ? (
+          <img
+            src={`data:image/png;base64,${source.thumbnail_b64}`}
+            alt={source.label}
+            className="h-full w-full object-cover"
+            draggable={false}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-[10px] text-cue-muted">
+            No preview
+          </div>
+        )}
+        {source.primary && (
+          <span className="absolute right-1 top-1 rounded bg-cue-accent/80 px-1 text-[8px] uppercase text-white">
+            primary
+          </span>
+        )}
+      </div>
+      <span className="block truncate text-[10px] text-cue-text group-hover:text-white">
+        {source.label}
+      </span>
+    </button>
+  );
 }
 
 function CaptureSourcePicker({ open, loading, sources, onPick, onCancel }: CaptureSourcePickerProps) {
@@ -660,50 +704,33 @@ function CaptureSourcePicker({ open, loading, sources, onPick, onCancel }: Captu
           ✕
         </button>
       </header>
-      <div className="flex-1 overflow-y-auto space-y-3">
-        {loading && <div className="text-center text-cue-muted py-4">Loading sources…</div>}
+      <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-6 text-cue-muted">
+            <div className="mb-2 h-5 w-5 animate-spin rounded-full border-2 border-cue-accent border-t-transparent" />
+            <span>Capturing previews…</span>
+          </div>
+        )}
         {!loading && monitors.length > 0 && (
           <section>
-            <h3 className="mb-1 text-[10px] uppercase tracking-wide text-cue-muted">
-              Monitors / entire screen
+            <h3 className="mb-1.5 text-[10px] uppercase tracking-wide text-cue-muted">
+              Entire screen
             </h3>
-            <div className="space-y-1">
+            <div className="grid grid-cols-2 gap-2">
               {monitors.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => onPick(s.id)}
-                  className="block w-full rounded border border-cue-subtle/40 bg-cue-surface/50 px-2 py-1.5 text-left text-cue-text hover:border-cue-accent hover:bg-cue-accent/10"
-                >
-                  <div className="flex items-center justify-between">
-                    <span>{s.label}</span>
-                    {s.primary && (
-                      <span className="rounded bg-cue-accent/20 px-1.5 py-0.5 text-[9px] uppercase text-cue-accent">
-                        primary
-                      </span>
-                    )}
-                  </div>
-                </button>
+                <SourceTile key={s.id} source={s} onPick={onPick} />
               ))}
             </div>
           </section>
         )}
         {!loading && windows.length > 0 && (
           <section>
-            <h3 className="mb-1 text-[10px] uppercase tracking-wide text-cue-muted">
-              Open windows
+            <h3 className="mb-1.5 text-[10px] uppercase tracking-wide text-cue-muted">
+              Window
             </h3>
-            <div className="space-y-1">
+            <div className="grid grid-cols-2 gap-2">
               {windows.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => onPick(s.id)}
-                  className="block w-full rounded border border-cue-subtle/40 bg-cue-surface/50 px-2 py-1.5 text-left text-cue-text hover:border-cue-accent hover:bg-cue-accent/10"
-                  title={`${s.width}×${s.height}`}
-                >
-                  <span className="truncate">{s.label}</span>
-                </button>
+                <SourceTile key={s.id} source={s} onPick={onPick} />
               ))}
             </div>
           </section>
