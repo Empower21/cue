@@ -31,6 +31,7 @@ pub fn run() {
             session::ask_with_image,
             documents::read_document,
             screenshot::capture_screen,
+            screenshot::list_capture_sources,
             overlay::drag::start_native_drag,
         ])
         .setup(|app| {

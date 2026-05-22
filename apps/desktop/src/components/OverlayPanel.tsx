@@ -71,6 +71,23 @@ export function OverlayPanel() {
   const [error, setError] = useState<string | null>(null);
   const [capturingScreen, setCapturingScreen] = useState(false);
 
+  // Capture-source picker state. When the user clicks Screenshot, we fetch
+  // the available monitors + windows from Rust, show them in a modal, and
+  // capture only after the user picks one. Mirrors the browser getDisplayMedia
+  // picker behaviour, so the user can choose Tab/Window/Entire Screen
+  // equivalents instead of always capturing the primary monitor.
+  interface CaptureSource {
+    id: string;
+    kind: 'monitor' | 'window';
+    label: string;
+    width: number;
+    height: number;
+    primary: boolean;
+  }
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerSources, setPickerSources] = useState<CaptureSource[]>([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
+
   // Hydrate purpose from ~/.cue/config.toml on mount. The Rust Config has had
   // `mode: Option<String>` since the first build — surfacing it here was just
   // the missing piece.
@@ -218,17 +235,35 @@ export function OverlayPanel() {
     void invoke('ask', { mode: purpose, trigger });
   };
 
-  // Screenshot button: capture screen, send to vision model with a generic
-  // "answer what's on screen" prompt. If the user has typed an Ask question,
-  // we use that as the prompt instead — most useful for "solve this leetcode
-  // problem" where context lives in the visible code editor.
+  // Screenshot click: fetch the list of capture sources from Rust and show
+  // the picker. The actual capture only happens once the user picks something
+  // in the picker (see captureFromSource below). This mirrors the browser
+  // getDisplayMedia picker — the user always chooses what to capture.
   const screenshotAnswer = async () => {
-    if (capturingScreen) return;
+    if (capturingScreen || streaming) return;
+    setError(null);
+    setPickerLoading(true);
+    setPickerOpen(true);
+    try {
+      const sources = await invoke<CaptureSource[]>('list_capture_sources');
+      setPickerSources(sources);
+    } catch (err) {
+      setError('Could not list capture sources: ' + String(err));
+      setPickerOpen(false);
+    } finally {
+      setPickerLoading(false);
+    }
+  };
+
+  // Called when the user picks a source in the picker. Acquires the
+  // single-flight slot, captures the chosen source, ships to vision.
+  const captureFromSource = async (sourceId: string) => {
+    setPickerOpen(false);
     if (!tryClaim()) return;
     setError(null);
     setCapturingScreen(true);
     try {
-      const imageB64 = await invoke<string>('capture_screen');
+      const imageB64 = await invoke<string>('capture_screen', { sourceId });
       const trigger = askInput.trim() || SCREENSHOT_PROMPTS[purpose];
       reset();
       await invoke('ask_with_image', { mode: purpose, trigger, imageB64 });
@@ -473,6 +508,13 @@ export function OverlayPanel() {
 
       <ContextLoader open={showContext} onClose={() => setShowContext(false)} />
       <SettingsPanel open={showSettings} onClose={() => setShowSettings(false)} />
+      <CaptureSourcePicker
+        open={pickerOpen}
+        loading={pickerLoading}
+        sources={pickerSources}
+        onPick={captureFromSource}
+        onCancel={() => setPickerOpen(false)}
+      />
       <EndSessionConfirm
         open={showEndConfirm}
         alsoClearContext={alsoClearContext}
@@ -582,6 +624,103 @@ function Dot({ label, voiced }: { label: string; voiced: boolean }) {
           (voiced ? 'bg-green-400 opacity-100' : 'bg-green-400 opacity-20')
         }
       />
+    </div>
+  );
+}
+
+interface CaptureSourcePickerProps {
+  open: boolean;
+  loading: boolean;
+  sources: {
+    id: string;
+    kind: 'monitor' | 'window';
+    label: string;
+    width: number;
+    height: number;
+    primary: boolean;
+  }[];
+  onPick: (id: string) => void;
+  onCancel: () => void;
+}
+
+function CaptureSourcePicker({ open, loading, sources, onPick, onCancel }: CaptureSourcePickerProps) {
+  if (!open) return null;
+  const monitors = sources.filter((s) => s.kind === 'monitor');
+  const windows = sources.filter((s) => s.kind === 'window');
+  return (
+    <div className="absolute inset-0 z-20 flex flex-col bg-cue-bg/95 p-3 text-xs">
+      <header className="flex items-center justify-between pb-2">
+        <h2 className="text-sm font-semibold">Pick what to capture</h2>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="text-cue-muted hover:text-cue-text"
+          aria-label="Cancel"
+        >
+          ✕
+        </button>
+      </header>
+      <div className="flex-1 overflow-y-auto space-y-3">
+        {loading && <div className="text-center text-cue-muted py-4">Loading sources…</div>}
+        {!loading && monitors.length > 0 && (
+          <section>
+            <h3 className="mb-1 text-[10px] uppercase tracking-wide text-cue-muted">
+              Monitors / entire screen
+            </h3>
+            <div className="space-y-1">
+              {monitors.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => onPick(s.id)}
+                  className="block w-full rounded border border-cue-subtle/40 bg-cue-surface/50 px-2 py-1.5 text-left text-cue-text hover:border-cue-accent hover:bg-cue-accent/10"
+                >
+                  <div className="flex items-center justify-between">
+                    <span>{s.label}</span>
+                    {s.primary && (
+                      <span className="rounded bg-cue-accent/20 px-1.5 py-0.5 text-[9px] uppercase text-cue-accent">
+                        primary
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+        {!loading && windows.length > 0 && (
+          <section>
+            <h3 className="mb-1 text-[10px] uppercase tracking-wide text-cue-muted">
+              Open windows
+            </h3>
+            <div className="space-y-1">
+              {windows.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => onPick(s.id)}
+                  className="block w-full rounded border border-cue-subtle/40 bg-cue-surface/50 px-2 py-1.5 text-left text-cue-text hover:border-cue-accent hover:bg-cue-accent/10"
+                  title={`${s.width}×${s.height}`}
+                >
+                  <span className="truncate">{s.label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+        {!loading && monitors.length === 0 && windows.length === 0 && (
+          <div className="text-center text-cue-muted py-4">No capture sources available.</div>
+        )}
+      </div>
+      <div className="mt-2 flex justify-end pt-2 border-t border-cue-subtle/40">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded border border-cue-subtle/60 px-3 py-1 text-cue-text hover:border-cue-subtle"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }
