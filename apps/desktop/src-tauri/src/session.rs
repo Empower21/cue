@@ -18,13 +18,35 @@ use tokio::sync::mpsc;
 /// State held by Tauri's manage().
 pub struct SessionState {
     inner: Arc<Mutex<Option<RunningSession>>>,
+    /// Abort handle for the in-flight `ask`/`ask_with_image` task. New asks
+    /// abort the previous before spawning — defense in depth against the JS
+    /// side accidentally letting two clicks through, which produces token-
+    /// interleaved garbage in the UI. Cleared by the task itself when done.
+    active_ask: Arc<Mutex<Option<tokio::task::AbortHandle>>>,
 }
 
 impl SessionState {
     pub fn new() -> Self {
         Self {
             inner: Arc::new(Mutex::new(None)),
+            active_ask: Arc::new(Mutex::new(None)),
         }
+    }
+
+    /// Abort the previous ask task (if any) and store the new abort handle.
+    /// Call this immediately before spawning a new ask task.
+    pub fn replace_ask(&self, handle: tokio::task::AbortHandle) {
+        let mut slot = self.active_ask.lock();
+        if let Some(prev) = slot.take() {
+            prev.abort();
+        }
+        *slot = Some(handle);
+    }
+
+    /// Clear the slot when the task naturally finishes. Safe to call even if
+    /// another task has already replaced ours.
+    pub fn clear_ask(&self) {
+        *self.active_ask.lock() = None;
     }
 }
 
@@ -381,8 +403,9 @@ pub async fn ask<R: Runtime>(
 
     let app_for_orchestrator = app.clone();
     let request_for_fallback = request.clone();
+    let active_for_clear = state.active_ask.clone();
 
-    tokio::spawn(async move {
+    let join = tokio::spawn(async move {
         match primary.stream(request).await {
             Ok(rx) => {
                 let outcome = forward_stream_with_first_token_timeout(
@@ -400,7 +423,15 @@ pub async fn ask<R: Runtime>(
                 fallback(app_for_orchestrator, request_for_fallback).await;
             }
         }
+        // Task finished naturally — clear the slot so a re-spawn doesn't
+        // try to abort an already-completed handle (no-op but tidier).
+        *active_for_clear.lock() = None;
     });
+
+    // Replace any prior in-flight task. If a click slipped past the JS
+    // guard, the previous task gets aborted before this one writes any
+    // tokens, guaranteeing only one stream ever reaches the UI.
+    state.replace_ask(join.abort_handle());
 
     Ok(())
 }
@@ -592,8 +623,9 @@ pub async fn ask_with_image<R: Runtime>(
 
     let app_for_orchestrator = app.clone();
     let request_for_fallback = request.clone();
+    let active_for_clear = state.active_ask.clone();
 
-    tokio::spawn(async move {
+    let join = tokio::spawn(async move {
         match primary.stream(request).await {
             Ok(rx) => {
                 let outcome = forward_stream_with_first_token_timeout(
@@ -627,7 +659,10 @@ pub async fn ask_with_image<R: Runtime>(
                 );
             }
         }
+        *active_for_clear.lock() = None;
     });
+
+    state.replace_ask(join.abort_handle());
 
     Ok(())
 }

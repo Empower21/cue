@@ -131,56 +131,90 @@ export function OverlayPanel() {
   const transcript = useTranscript();
   const { answer, reset } = useAnswer();
 
-  // Single source of truth for "an LLM call is in flight". Set true the moment
-  // a click happens (so the gap between click and first token doesn't let a
-  // second click through), cleared by the useEffect below when answer.done
-  // flips back to true (Rust emitted done or error). Without this, clicking
-  // Screenshot twice spawns two concurrent vision streams whose tokens
-  // interleave word-by-word in the UI — exactly what the user reported.
+  // Single-flight guard. The previous version used useState + useEffect to
+  // clear the flag when answer.done flipped true — but `reset()` also flips
+  // answer.done to true (initial state), so the effect fired between reset
+  // and the first token, briefly re-enabling the button and letting rapid
+  // clicks slip through.
+  //
+  // useRef is synchronous: assigning .current updates the value in the same
+  // tick, so the second click's guard check sees `true` immediately. State
+  // mirrors the ref for the disabled prop (refs don't trigger re-renders).
+  const inFlight = useRef(false);
   const [streaming, setStreaming] = useState(false);
+  // Clear in-flight only after the answer has BOTH (a) received content
+  // (text or error) AND (b) hit done. The `reset()` race can't trigger this
+  // because reset clears text to '' and error to undefined.
   useEffect(() => {
-    if (streaming && answer.done) setStreaming(false);
-  }, [streaming, answer.done]);
+    if (!inFlight.current) return;
+    if (answer.done && (answer.text || answer.error)) {
+      inFlight.current = false;
+      setStreaming(false);
+    }
+  }, [answer.done, answer.text, answer.error]);
+
+  // Safety net: if Rust never emits done (e.g., it crashed mid-stream), clear
+  // the guard after 45s. Vision can take 20s; this gives ample buffer.
+  useEffect(() => {
+    if (!streaming) return;
+    const t = setTimeout(() => {
+      if (inFlight.current) {
+        inFlight.current = false;
+        setStreaming(false);
+        setError('Request timed out (45s). Try again.');
+      }
+    }, 45_000);
+    return () => clearTimeout(t);
+  }, [streaming]);
 
   const lastTriggerAt = useRef(0);
 
+  /// Acquire the single-flight slot synchronously. Returns false if a call
+  /// is already in flight (caller should bail out). True means: slot is
+  /// yours, you MUST eventually trigger an answer event (or error) so the
+  /// effect above can clear it — or the safety net will at 45s.
+  const tryClaim = () => {
+    if (inFlight.current) return false;
+    inFlight.current = true;
+    setStreaming(true);
+    return true;
+  };
+
   // Auto mode: detect questions in system-channel transcripts.
   useEffect(() => {
-    if (streaming) return;
+    if (inFlight.current) return;
     if (mode !== 'auto' || transcript.length === 0) return;
     const last = transcript[transcript.length - 1];
     if (!last || !last.isFinal || last.channel !== 'system') return;
     const now = Date.now();
     if (now - lastTriggerAt.current < DEBOUNCE_MS) return;
     if (last.text.includes('?') || QUESTION_REGEX.test(last.text)) {
+      if (!tryClaim()) return;
       lastTriggerAt.current = now;
       reset();
-      setStreaming(true);
       void invoke('ask', { mode: purpose, trigger: last.text });
     }
-  }, [transcript, mode, purpose, reset, streaming]);
+  }, [transcript, mode, purpose, reset]);
 
   const submitAsk = () => {
-    if (streaming) return;
     if (!askInput.trim()) return;
+    if (!tryClaim()) return;
     reset();
-    setStreaming(true);
     void invoke('ask', { mode: purpose, trigger: askInput.trim() });
     setAskInput('');
   };
 
   // Manual "Answer" button: take the last final utterance as the question.
   const manualAnswer = () => {
-    if (streaming) return;
     const trigger = pickAnswerTrigger(transcript);
     if (!trigger) {
       setError('No transcript yet — speak first, then press Answer.');
       return;
     }
+    if (!tryClaim()) return;
     setError(null);
     lastTriggerAt.current = Date.now();
     reset();
-    setStreaming(true);
     void invoke('ask', { mode: purpose, trigger });
   };
 
@@ -189,21 +223,19 @@ export function OverlayPanel() {
   // we use that as the prompt instead — most useful for "solve this leetcode
   // problem" where context lives in the visible code editor.
   const screenshotAnswer = async () => {
-    if (streaming || capturingScreen) return;
+    if (capturingScreen) return;
+    if (!tryClaim()) return;
     setError(null);
     setCapturingScreen(true);
-    setStreaming(true);
     try {
       const imageB64 = await invoke<string>('capture_screen');
       const trigger = askInput.trim() || SCREENSHOT_PROMPTS[purpose];
       reset();
-      // Re-set streaming=true after reset (reset puts answer.done=true; the
-      // useEffect above might race in and flip streaming off in the same tick).
-      setStreaming(true);
       await invoke('ask_with_image', { mode: purpose, trigger, imageB64 });
       setAskInput('');
     } catch (err) {
       setError(String(err));
+      inFlight.current = false;
       setStreaming(false);
     } finally {
       setCapturingScreen(false);
