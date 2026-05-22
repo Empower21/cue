@@ -131,10 +131,22 @@ export function OverlayPanel() {
   const transcript = useTranscript();
   const { answer, reset } = useAnswer();
 
+  // Single source of truth for "an LLM call is in flight". Set true the moment
+  // a click happens (so the gap between click and first token doesn't let a
+  // second click through), cleared by the useEffect below when answer.done
+  // flips back to true (Rust emitted done or error). Without this, clicking
+  // Screenshot twice spawns two concurrent vision streams whose tokens
+  // interleave word-by-word in the UI — exactly what the user reported.
+  const [streaming, setStreaming] = useState(false);
+  useEffect(() => {
+    if (streaming && answer.done) setStreaming(false);
+  }, [streaming, answer.done]);
+
   const lastTriggerAt = useRef(0);
 
   // Auto mode: detect questions in system-channel transcripts.
   useEffect(() => {
+    if (streaming) return;
     if (mode !== 'auto' || transcript.length === 0) return;
     const last = transcript[transcript.length - 1];
     if (!last || !last.isFinal || last.channel !== 'system') return;
@@ -143,19 +155,23 @@ export function OverlayPanel() {
     if (last.text.includes('?') || QUESTION_REGEX.test(last.text)) {
       lastTriggerAt.current = now;
       reset();
+      setStreaming(true);
       void invoke('ask', { mode: purpose, trigger: last.text });
     }
-  }, [transcript, mode, purpose, reset]);
+  }, [transcript, mode, purpose, reset, streaming]);
 
   const submitAsk = () => {
+    if (streaming) return;
     if (!askInput.trim()) return;
     reset();
+    setStreaming(true);
     void invoke('ask', { mode: purpose, trigger: askInput.trim() });
     setAskInput('');
   };
 
   // Manual "Answer" button: take the last final utterance as the question.
   const manualAnswer = () => {
+    if (streaming) return;
     const trigger = pickAnswerTrigger(transcript);
     if (!trigger) {
       setError('No transcript yet — speak first, then press Answer.');
@@ -164,6 +180,7 @@ export function OverlayPanel() {
     setError(null);
     lastTriggerAt.current = Date.now();
     reset();
+    setStreaming(true);
     void invoke('ask', { mode: purpose, trigger });
   };
 
@@ -172,16 +189,22 @@ export function OverlayPanel() {
   // we use that as the prompt instead — most useful for "solve this leetcode
   // problem" where context lives in the visible code editor.
   const screenshotAnswer = async () => {
+    if (streaming || capturingScreen) return;
     setError(null);
     setCapturingScreen(true);
+    setStreaming(true);
     try {
       const imageB64 = await invoke<string>('capture_screen');
       const trigger = askInput.trim() || SCREENSHOT_PROMPTS[purpose];
       reset();
+      // Re-set streaming=true after reset (reset puts answer.done=true; the
+      // useEffect above might race in and flip streaming off in the same tick).
+      setStreaming(true);
       await invoke('ask_with_image', { mode: purpose, trigger, imageB64 });
       setAskInput('');
     } catch (err) {
       setError(String(err));
+      setStreaming(false);
     } finally {
       setCapturingScreen(false);
     }
@@ -317,12 +340,16 @@ export function OverlayPanel() {
         <Dot label={t('audio.them')} voiced={system.voiced} />
       </div>
 
-      {/* Action row: manual Answer + Screenshot — always available, even in Listen mode */}
+      {/* Action row: manual Answer + Screenshot — always available, even in
+         Listen mode. Both disabled while an answer is streaming so we can
+         never have two concurrent LLM calls writing into the same answer
+         state (which would interleave tokens word-by-word). */}
       <div className="mt-2 flex items-center gap-2">
         <button
           type="button"
           onClick={manualAnswer}
-          className="flex-1 rounded border border-cue-accent/60 bg-cue-accent/20 px-2 py-1 text-xs text-cue-text hover:bg-cue-accent/30"
+          disabled={streaming}
+          className="flex-1 rounded border border-cue-accent/60 bg-cue-accent/20 px-2 py-1 text-xs text-cue-text hover:bg-cue-accent/30 disabled:opacity-50"
           title={t('panel.answer')}
         >
           {t('panel.answer')}
@@ -330,11 +357,15 @@ export function OverlayPanel() {
         <button
           type="button"
           onClick={screenshotAnswer}
-          disabled={capturingScreen}
+          disabled={streaming || capturingScreen}
           className="flex-1 rounded border border-cue-subtle/60 bg-cue-surface px-2 py-1 text-xs text-cue-text hover:border-cue-accent disabled:opacity-50"
           title={t('panel.screenshot')}
         >
-          {capturingScreen ? t('panel.analysingScreen') : t('panel.screenshot')}
+          {capturingScreen
+            ? t('panel.analysingScreen')
+            : streaming
+            ? t('panel.thinking')
+            : t('panel.screenshot')}
         </button>
       </div>
 
@@ -359,12 +390,14 @@ export function OverlayPanel() {
                   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitAsk();
                 }}
                 placeholder={t('panel.askPlaceholder')}
-                className="flex-1 rounded border border-cue-subtle/40 bg-cue-surface px-2 py-1 text-xs text-cue-text"
+                disabled={streaming}
+                className="flex-1 rounded border border-cue-subtle/40 bg-cue-surface px-2 py-1 text-xs text-cue-text disabled:opacity-50"
               />
               <button
                 type="button"
                 onClick={submitAsk}
-                className="rounded bg-cue-accent px-2 text-xs text-white"
+                disabled={streaming}
+                className="rounded bg-cue-accent px-2 text-xs text-white disabled:opacity-50"
               >
                 {t('panel.ask')}
               </button>
