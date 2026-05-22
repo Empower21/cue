@@ -138,12 +138,12 @@ export function OverlayPanel() {
     setError(null);
     setCapturingScreen(true);
     try {
-      const image_b64 = await invoke<string>('capture_screen');
+      const imageB64 = await invoke<string>('capture_screen');
       const trigger = askInput.trim()
         ? askInput.trim()
         : "Solve or explain whatever is currently on the candidate's screen. If it's a coding problem, give a runnable solution and walk through the approach in 3-5 bullets.";
       reset();
-      await invoke('ask_with_image', { mode: 'interview', trigger, image_b64 });
+      await invoke('ask_with_image', { mode: 'interview', trigger, imageB64 });
       setAskInput('');
     } catch (err) {
       setError(String(err));
