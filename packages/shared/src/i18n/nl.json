@@ -12,8 +12,12 @@
     "errorLabel": "Fout",
     "thinking": "Aan het denken…",
     "analysingScreen": "Scherm aan het lezen…",
-    "visibilityNotice": "Dit is de browserversie van cue — zichtbaar bij schermdelen. Open hem op een telefoon, tablet of tweede scherm dat de interviewer niet deelt. Voor onzichtbaarheid op besturingssysteemniveau op dezelfde machine, installeer de desktop-app.",
-    "getDesktop": "Desktop-app halen"
+    "visibilityNotice": "Browser-cue is zichtbaar als je je hele scherm deelt. Veilige routes: (1) deel alleen het meeting-tabblad of -venster en klik op Loskoppelen — de antwoordkaart opent in een apart OS-venster dat het delen niet meeneemt. (2) open cue op telefoon, tablet of tweede monitor die niet gedeeld is. (3) voor volledige onzichtbaarheid op deze machine, installeer de desktop-app.",
+    "getDesktop": "Desktop-app halen",
+    "popOut": "Loskoppelen",
+    "closePiP": "Losgekoppeld venster sluiten",
+    "poppedOut": "Losgekoppeld",
+    "poppedOutNote": "Het antwoord staat nu in het losgekoppelde venster. Wanneer je slechts één tabblad of app-venster deelt, wordt het losgekoppelde venster NIET vastgelegd."
   },
   "context": {
     "title": "Context",

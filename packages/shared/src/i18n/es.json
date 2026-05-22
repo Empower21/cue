@@ -12,8 +12,12 @@
     "errorLabel": "Error",
     "thinking": "Pensando…",
     "analysingScreen": "Leyendo la pantalla…",
-    "visibilityNotice": "Esta es la versión web de cue — visible al compartir pantalla. Úsala en un móvil, tableta o pantalla secundaria que el entrevistador no comparta. Para invisibilidad a nivel de sistema en la misma máquina, instala la app de escritorio.",
-    "getDesktop": "Descargar app"
+    "visibilityNotice": "cue en navegador es visible si compartes toda la pantalla. Rutas seguras: (1) comparte solo la Pestaña/Ventana de la reunión y pulsa Despegar — la tarjeta de respuesta se abre en una ventana del sistema operativo separada que la compartición no incluirá. (2) abre cue en un móvil, tableta o monitor secundario que no esté compartido. (3) para invisibilidad total en esta máquina, instala la app de escritorio.",
+    "getDesktop": "Descargar app",
+    "popOut": "Despegar",
+    "closePiP": "Cerrar despegado",
+    "poppedOut": "Despegado",
+    "poppedOutNote": "La respuesta está ahora en la ventana despegada. Cuando compartes solo una pestaña o ventana, la ventana despegada NO se captura."
   },
   "context": {
     "title": "Contexto",

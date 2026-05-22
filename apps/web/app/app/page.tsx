@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
 import { detectBrowserLanguage, isLanguage } from '@/lib/i18n';
@@ -11,6 +12,7 @@ import { SettingsDrawer } from '@/components/copilot/SettingsDrawer';
 import { TranscriptView } from '@/components/copilot/TranscriptView';
 import { AnswerCard } from '@/components/copilot/AnswerCard';
 import { ModeSelector, type Mode } from '@/components/copilot/ModeSelector';
+import { usePiP } from '@/components/copilot/usePiP';
 import i18next from 'i18next';
 
 const QUESTION_REGEX =
@@ -52,6 +54,8 @@ export default function CopilotPage() {
     captureSystem,
     setCaptureSystem,
   } = useCopilotState();
+
+  const { pipWindow, supported: pipSupported, open: openPiP, close: closePiP } = usePiP();
 
   // Mic is persisted; system audio is session-only and resets on every
   // page load. The user sees both states on the chips above the transcript.
@@ -197,6 +201,21 @@ export default function CopilotPage() {
             >
               {t('panel.screenshot')}
             </button>
+            {pipSupported && (
+              <button
+                type="button"
+                onClick={pipWindow ? closePiP : openPiP}
+                className={
+                  'rounded-md border px-3 py-1.5 text-sm transition ' +
+                  (pipWindow
+                    ? 'border-emerald-400 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/20'
+                    : 'border-cue-subtle/50 hover:border-cue-accent')
+                }
+                title="Open the answer card in a separate OS window — not captured when sharing only this tab"
+              >
+                {pipWindow ? '⇲ ' + t('panel.closePiP') : '⇱ ' + t('panel.popOut')}
+              </button>
+            )}
             <button
               type="button"
               onClick={resetSession}
@@ -322,9 +341,26 @@ export default function CopilotPage() {
                 HuggingFace fallback
               </span>
             )}
+            {pipWindow && (
+              <span className="rounded bg-emerald-400/20 px-2 py-0.5 text-[10px] normal-case text-emerald-200">
+                {t('panel.poppedOut')}
+              </span>
+            )}
           </header>
-          <AnswerCard answer={answer} />
-          {!answer.text && !answer.error && answer.done && (
+          {pipWindow ? (
+            <>
+              <p className="text-sm text-cue-muted">{t('panel.poppedOutNote')}</p>
+              {createPortal(
+                <div style={{ padding: '16px', minHeight: '100vh' }}>
+                  <AnswerCard answer={answer} />
+                </div>,
+                pipWindow.document.body,
+              )}
+            </>
+          ) : (
+            <AnswerCard answer={answer} />
+          )}
+          {!answer.text && !answer.error && answer.done && !pipWindow && (
             <p className="text-sm text-cue-muted">{t('panel.pressStart')}</p>
           )}
         </section>

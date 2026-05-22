@@ -12,8 +12,12 @@
     "errorLabel": "Erreur",
     "thinking": "Réflexion en cours…",
     "analysingScreen": "Lecture de l'écran…",
-    "visibilityNotice": "Voici la version web de cue — visible lors d'un partage d'écran. Utilisez-la sur un téléphone, une tablette ou un second écran que l'intervieweur ne partage pas. Pour une invisibilité au niveau du système sur la même machine, installez l'application de bureau.",
-    "getDesktop": "Obtenir l'app"
+    "visibilityNotice": "cue dans le navigateur est visible si vous partagez tout votre écran. Chemins sûrs : (1) partagez uniquement l'onglet/la fenêtre de la réunion, puis cliquez sur Détacher — la carte de réponse s'ouvre dans une fenêtre OS séparée que le partage n'inclura pas. (2) ouvrez cue sur un téléphone, une tablette ou un second moniteur non partagé. (3) pour une invisibilité totale sur cette machine, installez l'app de bureau.",
+    "getDesktop": "Obtenir l'app",
+    "popOut": "Détacher",
+    "closePiP": "Fermer la fenêtre détachée",
+    "poppedOut": "Détaché",
+    "poppedOutNote": "La réponse est maintenant dans la fenêtre détachée. Quand vous partagez un seul onglet ou une seule fenêtre, la fenêtre détachée n'est PAS capturée."
   },
   "context": {
     "title": "Contexte",

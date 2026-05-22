@@ -12,8 +12,12 @@
     "errorLabel": "Errore",
     "thinking": "Sto pensando…",
     "analysingScreen": "Sto leggendo lo schermo…",
-    "visibilityNotice": "Questa è la versione web di cue — visibile in una condivisione schermo. Aprila su un telefono, tablet o secondo schermo che l'intervistatore non sta condividendo. Per l'invisibilità a livello di sistema sulla stessa macchina, installa l'app desktop.",
-    "getDesktop": "Scarica l'app"
+    "visibilityNotice": "cue nel browser è visibile se condividi l'intero schermo. Vie sicure: (1) condividi solo la scheda o la finestra della riunione, poi clicca Estrai — la scheda risposta si apre in una finestra separata del sistema operativo che la condivisione non includerà. (2) apri cue su telefono, tablet o secondo monitor non condiviso. (3) per invisibilità totale su questa macchina, installa l'app desktop.",
+    "getDesktop": "Scarica l'app",
+    "popOut": "Estrai",
+    "closePiP": "Chiudi estratto",
+    "poppedOut": "Estratto",
+    "poppedOutNote": "La risposta è ora nella finestra estratta. Quando condividi solo una scheda o una finestra dell'app, la finestra estratta NON viene catturata."
   },
   "context": {
     "title": "Contesto",

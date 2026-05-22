@@ -12,8 +12,12 @@
     "errorLabel": "Fehler",
     "thinking": "Denke nach…",
     "analysingScreen": "Lese den Bildschirm…",
-    "visibilityNotice": "Dies ist die Browser-Version von cue — bei Bildschirmübertragung sichtbar. Öffne sie auf einem Handy, Tablet oder zweiten Bildschirm, den der Interviewer nicht teilt. Für Unsichtbarkeit auf Betriebssystemebene auf derselben Maschine installiere die Desktop-App.",
-    "getDesktop": "Desktop-App holen"
+    "visibilityNotice": "Browser-cue ist sichtbar, wenn du den gesamten Bildschirm teilst. Sichere Wege: (1) teile nur den Meeting-Tab/das Meeting-Fenster und klicke auf Abkoppeln — die Antwortkarte öffnet sich in einem separaten OS-Fenster, das die Freigabe nicht einbezieht. (2) öffne cue auf Handy, Tablet oder zweitem Monitor, der nicht geteilt wird. (3) für vollständige Unsichtbarkeit auf dieser Maschine installiere die Desktop-App.",
+    "getDesktop": "Desktop-App holen",
+    "popOut": "Abkoppeln",
+    "closePiP": "Abgekoppeltes Fenster schließen",
+    "poppedOut": "Abgekoppelt",
+    "poppedOutNote": "Die Antwort ist jetzt im abgekoppelten Fenster. Wenn du nur einen Tab oder ein App-Fenster teilst, wird das abgekoppelte Fenster NICHT erfasst."
   },
   "context": {
     "title": "Kontext",

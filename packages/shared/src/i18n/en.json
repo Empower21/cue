@@ -12,8 +12,12 @@
     "errorLabel": "Error",
     "thinking": "Thinking…",
     "analysingScreen": "Reading screen…",
-    "visibilityNotice": "This is the browser version of cue — visible in a screen share. Open it on a phone, tablet, or second screen the interviewer isn't sharing. For OS-level invisibility on the same machine, install the desktop app.",
-    "getDesktop": "Get desktop app"
+    "visibilityNotice": "Browser cue is visible if you share your entire screen. Safe paths: (1) share only the meeting Tab/Window, then click Pop out — the answer card opens in a separate OS window the share won't include. (2) open cue on a phone, tablet, or second monitor that isn't shared. (3) for full invisibility on this machine, install the desktop app.",
+    "getDesktop": "Get desktop app",
+    "popOut": "Pop out",
+    "closePiP": "Close pop-out",
+    "poppedOut": "Popped out",
+    "poppedOutNote": "Answer is now in the pop-out window. When sharing a single tab or app window, the pop-out is NOT captured."
   },
   "context": {
     "title": "Context",
