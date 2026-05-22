@@ -10,13 +10,13 @@ export function Nav() {
           </span>
           cue
         </Link>
-        <div className="flex items-center gap-4 text-sm text-cue-muted sm:gap-6">
-          <Link href="/guide" className="hidden transition hover:text-cue-text sm:inline">Guide</Link>
-          <Link href="/changelog" className="hidden transition hover:text-cue-text sm:inline">Changelog</Link>
-          <Link href="/eula" className="hidden transition hover:text-cue-text sm:inline">EULA</Link>
+        <div className="flex items-center gap-3 text-xs text-cue-muted sm:gap-6 sm:text-sm">
+          <Link href="/guide" className="transition hover:text-cue-text">Guide</Link>
+          <Link href="/changelog" className="transition hover:text-cue-text">Changelog</Link>
+          <Link href="/eula" className="transition hover:text-cue-text">EULA</Link>
           <Link
             href="/download"
-            className="rounded-md bg-cue-accent px-3 py-1.5 font-medium text-white transition hover:bg-cue-accentHover"
+            className="rounded-md bg-cue-accent px-2.5 py-1 font-medium text-white transition hover:bg-cue-accentHover sm:px-3 sm:py-1.5"
           >
             Download
           </Link>
