@@ -57,6 +57,27 @@ export default function CopilotPage() {
 
   const { pipWindow, supported: pipSupported, open: openPiP, close: closePiP } = usePiP();
 
+  // Auto-pop the answer card when the user clicks Start. Document PiP
+  // needs a user-gesture context to open, and the Start click satisfies
+  // that. If it fails (browser without PiP, or gesture lost across an
+  // await), we silently fall through — the user can still click Pop out
+  // manually.
+  const handleStartClick = async () => {
+    if (running) {
+      stop();
+      closePiP();
+      return;
+    }
+    if (pipSupported && !pipWindow) {
+      try {
+        await openPiP();
+      } catch {
+        // Best-effort. User can still click Pop out manually below.
+      }
+    }
+    start();
+  };
+
   // Mic is persisted; system audio is session-only and resets on every
   // page load. The user sees both states on the chips above the transcript.
   const micOn = config.captureMic !== false;
@@ -181,7 +202,7 @@ export default function CopilotPage() {
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={running ? stop : start}
+              onClick={() => void handleStartClick()}
               className="rounded-md bg-cue-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-cue-accentHover"
             >
               {running ? t('app.stop') : t('app.start')}
