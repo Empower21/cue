@@ -339,55 +339,62 @@ export function OverlayPanel() {
       </div>
 
       <main className="flex-1 overflow-y-auto py-3 text-sm text-cue-text">
-        {!running && (
-          <div className="flex h-full items-center justify-center text-center text-xs text-cue-muted">
-            <div>{t('panel.pressStart')}</div>
-          </div>
-        )}
-
-        {running && (
-          <div className="flex h-full flex-col gap-3">
+        <div className="flex h-full flex-col gap-3">
+          {/* Transcript only when audio is running */}
+          {running && (
             <div className="flex-1 overflow-y-auto">
               <TranscriptStream />
             </div>
+          )}
 
-            {mode === 'ask' && (
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <input
-                    value={askInput}
-                    onChange={(e) => setAskInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitAsk();
-                    }}
-                    placeholder={t('panel.askPlaceholder')}
-                    className="flex-1 rounded border border-cue-subtle/40 bg-cue-surface px-2 py-1 text-xs text-cue-text"
-                  />
-                  <button
-                    type="button"
-                    onClick={submitAsk}
-                    className="rounded bg-cue-accent px-2 text-xs text-white"
-                  >
-                    {t('panel.ask')}
-                  </button>
-                </div>
-                <AnswerCard answer={answer} />
-              </div>
-            )}
+          {/* Ask input — visible whenever ask mode is selected, even before
+             Start, so the user can type and hit Screenshot or Ask without
+             starting audio. */}
+          {mode === 'ask' && (
+            <div className="flex gap-2">
+              <input
+                value={askInput}
+                onChange={(e) => setAskInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitAsk();
+                }}
+                placeholder={t('panel.askPlaceholder')}
+                className="flex-1 rounded border border-cue-subtle/40 bg-cue-surface px-2 py-1 text-xs text-cue-text"
+              />
+              <button
+                type="button"
+                onClick={submitAsk}
+                className="rounded bg-cue-accent px-2 text-xs text-white"
+              >
+                {t('panel.ask')}
+              </button>
+            </div>
+          )}
 
-            {mode !== 'ask' && (
-              <div className="space-y-2">
-                <AnswerCard answer={answer} />
-                {autoAnswers
-                  .slice()
-                  .reverse()
-                  .map((a, i) => (
-                    <AnswerCard key={`${i}-${a.text.slice(0, 20)}`} answer={a} />
-                  ))}
-              </div>
-            )}
+          {/* Answer area — always visible. The Screenshot button works
+             without a running audio session, so the AnswerCard MUST be
+             mounted regardless of `running` or streaming-state will land
+             in a dead component. AnswerCard returns null when empty so
+             this costs nothing in the empty case. */}
+          <div className="space-y-2">
+            <AnswerCard answer={answer} />
+            {autoAnswers
+              .slice()
+              .reverse()
+              .map((a, i) => (
+                <AnswerCard key={`${i}-${a.text.slice(0, 20)}`} answer={a} />
+              ))}
           </div>
-        )}
+
+          {/* Press-Start placeholder — only when there's truly nothing to
+             show. Hidden once a transcript is running OR an answer is
+             streaming/displayed/errored. */}
+          {!running && !answer.text && !answer.error && (
+            <div className="flex flex-1 items-center justify-center text-center text-xs text-cue-muted">
+              <div>{t('panel.pressStart')}</div>
+            </div>
+          )}
+        </div>
       </main>
 
       <footer className="border-t border-cue-subtle pt-2 text-[10px] text-cue-muted">
