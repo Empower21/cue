@@ -15,12 +15,6 @@ export function Nav() {
           <Link href="/changelog" className="hidden transition hover:text-cue-text sm:inline">Changelog</Link>
           <Link href="/eula" className="hidden transition hover:text-cue-text sm:inline">EULA</Link>
           <Link
-            href="/app"
-            className="rounded-md border border-cue-accent/60 px-3 py-1.5 font-medium text-cue-text transition hover:border-cue-accent hover:bg-cue-accent/10"
-          >
-            Open web app
-          </Link>
-          <Link
             href="/download"
             className="rounded-md bg-cue-accent px-3 py-1.5 font-medium text-white transition hover:bg-cue-accentHover"
           >
