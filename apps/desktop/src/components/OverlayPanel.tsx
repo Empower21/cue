@@ -278,12 +278,17 @@ export function OverlayPanel() {
     }
   };
 
-  // Snapshot finished auto-mode answers so they accumulate in the list.
+  // Snapshot finished auto-mode answers so they accumulate in the list, then
+  // clear the live answer. Without the reset, the just-finished answer stays
+  // in the top <AnswerCard answer={answer}> AND is also rendered from
+  // `autoAnswers` below — so it shows twice until the next auto-trigger fires.
+  // That double-render was the "outputs in duplicate" the user saw in Auto mode.
   useEffect(() => {
     if (mode === 'auto' && answer.done && answer.text) {
       setAutoAnswers((prev) => [...prev, answer]);
+      reset();
     }
-  }, [answer, mode]);
+  }, [answer, mode, reset]);
 
   const toggle = async () => {
     setError(null);
