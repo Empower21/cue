@@ -144,8 +144,29 @@ export function useCopilotState() {
       const lang = config.language ?? 'en';
 
       if (wantMic) {
+        // Mic capture profile depends on whether system audio is ALSO being
+        // captured (desktop screen-share path) or the mic is the only source
+        // (always the case on mobile):
+        //
+        //  - Mic-only → capture RAW: echo cancellation, noise suppression, and
+        //    auto gain OFF. Those features exist to isolate the near-end
+        //    speaker for a call, and on a phone they actively delete
+        //    loudspeaker audio because they treat it as echo. Turning them off
+        //    is what lets cue hear a speakerphone conversation acoustically.
+        //    (This is why mic capture "worked when not in a call" but went
+        //    silent on speaker — the call audio was cancelled before it ever
+        //    reached Deepgram.)
+        //  - Mic + system → keep the defaults (AEC on). The other side's voice
+        //    already arrives cleanly on the system channel; a raw mic would
+        //    re-capture the loudspeaker and double-transcribe it.
         const mic = await navigator.mediaDevices.getUserMedia({
-          audio: true,
+          audio: wantSystem
+            ? true
+            : {
+                echoCancellation: false,
+                noiseSuppression: false,
+                autoGainControl: false,
+              },
           video: false,
         });
         micStream.current = mic;
@@ -244,9 +265,19 @@ export function useCopilotState() {
     async (trigger: string, imageB64?: string) => {
       setError(null);
       setAnswer({ text: '', done: false });
+      // Build the rolling context for the model. Two things keep answers
+      // tight and on-topic:
+      //   1. Drop any final whose text IS the trigger — otherwise the model
+      //      sees the question once here and again as `## Trigger`, and tends
+      //      to echo it back. (This was the main source of "duplicated"
+      //      answers.)
+      //   2. Keep only the last 8 finals. Older utterances are usually stale
+      //      and pull the answer off the current topic.
+      const norm = (s: string) => s.trim().toLowerCase();
+      const triggerKey = norm(trigger);
       const finals = transcript
-        .filter((u) => u.isFinal)
-        .slice(-10)
+        .filter((u) => u.isFinal && norm(u.text) !== triggerKey)
+        .slice(-8)
         .map((u) => ({ channel: u.channel, text: u.text }));
       const headers: Record<string, string> = { 'content-type': 'application/json' };
       // Authorization header is optional — server falls back to ANTHROPIC_API_KEY.

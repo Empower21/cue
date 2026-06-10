@@ -1,4 +1,4 @@
-//! Claude Sonnet 4.6 streaming via the Messages API with 4-tier prompt cache.
+//! Claude Opus 4.8 streaming via the Messages API with 4-tier prompt cache.
 
 use crate::llm::{prompts, LlmEvent, LlmProvider, LlmRequest};
 use async_trait::async_trait;
@@ -7,7 +7,7 @@ use futures_util::StreamExt;
 use serde_json::{json, Value};
 use tokio::sync::mpsc;
 
-pub const MODEL: &str = "claude-sonnet-4-6";
+pub const MODEL: &str = "claude-opus-4-8";
 pub const ENDPOINT: &str = "https://api.anthropic.com/v1/messages";
 pub const ANTHROPIC_VERSION: &str = "2023-06-01";
 

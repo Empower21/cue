@@ -36,6 +36,20 @@ export default function CopilotPage() {
     }
   }, []);
 
+  // System-audio capture needs getDisplayMedia (screen share), which phone
+  // browsers do not implement. On mobile the mic is the ONLY capture path, so
+  // we hide the System-audio chip there and instead tell the user to put the
+  // call on speaker — the (now raw) mic picks the conversation up acoustically.
+  // Defaults to true so the desktop SSR markup is unchanged; corrected on mount.
+  const [systemAudioSupported, setSystemAudioSupported] = useState(true);
+  useEffect(() => {
+    setSystemAudioSupported(
+      typeof navigator !== 'undefined' &&
+        !!navigator.mediaDevices &&
+        typeof navigator.mediaDevices.getDisplayMedia === 'function',
+    );
+  }, []);
+
   const {
     config,
     updateConfig,
@@ -295,21 +309,28 @@ export default function CopilotPage() {
               <span className="mr-1">{micOn ? '●' : '○'}</span>
               Mic
             </button>
-            <button
-              type="button"
-              onClick={() => setCaptureSystem(!systemOn)}
-              disabled={running}
-              className={
-                'rounded-full border px-3 py-1 transition disabled:opacity-50 ' +
-                (systemOn
-                  ? 'border-amber-400 bg-amber-400/15 text-amber-100'
-                  : 'border-cue-subtle/60 text-cue-muted hover:text-cue-text')
-              }
-              title="Capture the other side's audio — requires screen share"
-            >
-              <span className="mr-1">{systemOn ? '●' : '○'}</span>
-              System audio
-            </button>
+            {systemAudioSupported ? (
+              <button
+                type="button"
+                onClick={() => setCaptureSystem(!systemOn)}
+                disabled={running}
+                className={
+                  'rounded-full border px-3 py-1 transition disabled:opacity-50 ' +
+                  (systemOn
+                    ? 'border-amber-400 bg-amber-400/15 text-amber-100'
+                    : 'border-cue-subtle/60 text-cue-muted hover:text-cue-text')
+                }
+                title="Capture the other side's audio — requires screen share"
+              >
+                <span className="mr-1">{systemOn ? '●' : '○'}</span>
+                System audio
+              </button>
+            ) : (
+              <span className="text-[11px] text-cue-muted">
+                On this device cue listens through the mic — put your call on
+                speaker so it can hear both sides.
+              </span>
+            )}
             {running && (
               <span className="text-[11px] text-cue-muted">
                 Stop to change toggles

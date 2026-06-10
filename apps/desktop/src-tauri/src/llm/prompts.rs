@@ -44,8 +44,16 @@ pub fn user_context_block(req: &LlmRequest) -> String {
 }
 
 pub fn rolling_transcript(req: &LlmRequest) -> String {
+    // Skip any turn that IS the live trigger. The trigger is already sent
+    // verbatim in the L4 block; including it again here makes the model echo
+    // the question back (the main cause of "duplicated" answers). Match
+    // case-insensitively on trimmed text.
+    let trigger_key = req.trigger.trim().to_lowercase();
     let mut s = String::new();
     for turn in &req.transcript_window {
+        if turn.text.trim().to_lowercase() == trigger_key {
+            continue;
+        }
         s.push_str(&format!("[{}] {}\n", turn.channel, turn.text));
     }
     s.trim().to_string()
