@@ -50,6 +50,18 @@ export default function CopilotPage() {
     );
   }, []);
 
+  // iOS detection. iPadOS 13+ reports as "MacIntel" with touch points, so the
+  // UA test alone misses iPads — fall back to the touch heuristic.
+  const [isIOS, setIsIOS] = useState(false);
+  useEffect(() => {
+    if (typeof navigator === 'undefined') return;
+    const ua = navigator.userAgent || '';
+    setIsIOS(
+      /iP(hone|ad|od)/.test(ua) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1),
+    );
+  }, []);
+
   const {
     config,
     updateConfig,
@@ -143,17 +155,40 @@ export default function CopilotPage() {
   // Auto mode: when a final system-channel utterance looks like a question
   // and the 3s debounce has elapsed, fire ask() automatically.
   const lastAutoFireAt = useRef(0);
+  // Id of the last system utterance we already auto-answered. The 3s time
+  // debounce alone lets a lingering question re-fire (the effect re-runs on
+  // every transcript update), producing duplicate answers — gate on identity.
+  const lastAnsweredId = useRef<string | null>(null);
   useEffect(() => {
     if (mode !== 'auto' || transcript.length === 0) return;
     const last = transcript[transcript.length - 1];
     if (!last || !last.isFinal || last.channel !== 'system') return;
+    if (last.id === lastAnsweredId.current) return;
     const now = Date.now();
     if (now - lastAutoFireAt.current < AUTO_DEBOUNCE_MS) return;
     if (last.text.includes('?') || QUESTION_REGEX.test(last.text)) {
+      lastAnsweredId.current = last.id;
       lastAutoFireAt.current = now;
       void ask(last.text);
     }
   }, [transcript, mode, ask]);
+
+  // iOS-only: if a session is running with the mic on but no transcript has
+  // appeared after a few seconds, the mic is almost certainly producing
+  // silence — the classic case being an active phone call, during which iOS
+  // hands the mic exclusively to the call and gives the browser nothing. Show
+  // a clear explanation instead of a confusing blank transcript.
+  const [iosNoAudio, setIosNoAudio] = useState(false);
+  useEffect(() => {
+    if (!isIOS || !running || !micOn || transcript.length > 0) {
+      setIosNoAudio(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      if (transcript.length === 0) setIosNoAudio(true);
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [isIOS, running, micOn, transcript.length]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -360,6 +395,20 @@ export default function CopilotPage() {
           {running && systemOn && !systemAudioAvailable && (
             <div className="mt-2 rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
               System audio wasn&apos;t granted. Stop, then Start again and pick &quot;Entire Screen&quot; or a Window with &quot;Share audio&quot; checked.
+            </div>
+          )}
+
+          {iosNoAudio && (
+            <div className="mt-2 rounded-md border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
+              <p className="font-semibold">No audio detected from the mic.</p>
+              <p className="mt-1">
+                If you&apos;re on a phone call, iOS blocks apps (including this
+                browser) from using the mic <em>during</em> calls — so cue
+                can&apos;t hear it. To caption a call, run cue on a{' '}
+                <strong>second device</strong> placed near your phone on speaker.
+                Otherwise, check Safari has mic permission for this site (&quot;AA&quot;
+                menu → Website Settings → Microphone).
+              </p>
             </div>
           )}
 

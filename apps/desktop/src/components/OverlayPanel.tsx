@@ -186,6 +186,11 @@ export function OverlayPanel() {
   }, [streaming]);
 
   const lastTriggerAt = useRef(0);
+  // The id of the last system utterance we already auto-answered. Without
+  // this, the 3s time-debounce alone lets the SAME lingering question
+  // re-trigger every few seconds (the effect re-runs on every audio-signal
+  // re-render), stacking duplicate answers. Answer each utterance at most once.
+  const lastAnsweredId = useRef<string | null>(null);
 
   /// Acquire the single-flight slot synchronously. Returns false if a call
   /// is already in flight (caller should bail out). True means: slot is
@@ -204,10 +209,14 @@ export function OverlayPanel() {
     if (mode !== 'auto' || transcript.length === 0) return;
     const last = transcript[transcript.length - 1];
     if (!last || !last.isFinal || last.channel !== 'system') return;
+    // Already answered THIS utterance — don't re-answer it just because it's
+    // still the last line on screen. This is the real fix for duplicate answers.
+    if (last.id === lastAnsweredId.current) return;
     const now = Date.now();
     if (now - lastTriggerAt.current < DEBOUNCE_MS) return;
     if (last.text.includes('?') || QUESTION_REGEX.test(last.text)) {
       if (!tryClaim()) return;
+      lastAnsweredId.current = last.id;
       lastTriggerAt.current = now;
       reset();
       void invoke('ask', { mode: purpose, trigger: last.text });
