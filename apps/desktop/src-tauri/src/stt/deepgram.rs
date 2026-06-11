@@ -101,12 +101,24 @@ async fn driver_task(
     // Deepgram closes the WebSocket if no data arrives within ~10s. Send a
     // KeepAlive control message every 5s during silence to hold the connection.
     let mut keepalive_tick = tokio::time::interval(Duration::from_secs(5));
+    // Skip (don't burst-replay) ticks missed while the audio branch was busy —
+    // the default Burst behavior fires every accumulated tick back-to-back the
+    // moment audio pauses, hammering Deepgram's control channel for nothing.
+    keepalive_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     keepalive_tick.tick().await; // consume immediate first tick
 
     loop {
         tokio::select! {
-            // Outgoing audio.
-            Some(bytes) = frame_rx.recv() => {
+            // Outgoing audio. When the frame channel closes (session stopped /
+            // dropped) we must break EXPLICITLY: a `Some(..) = recv()` pattern
+            // would merely disable the branch, leaving this task alive forever
+            // sending keepalives — every stop/start cycle would leak a live
+            // Deepgram connection.
+            maybe_bytes = frame_rx.recv() => {
+                let Some(bytes) = maybe_bytes else {
+                    log::info!("deepgram[{:?}] frame channel closed — shutting down", channel);
+                    break;
+                };
                 let msg = Message::Binary(bytes);
                 if let Err(e) = ws.send(msg).await {
                     let _ = event_tx.send(SttEvent::Error {
@@ -115,9 +127,11 @@ async fn driver_task(
                     }).await;
                     break;
                 }
+                // Audio just went out — push the next keepalive a full period
+                // away. KeepAlives are only needed during true silence.
+                keepalive_tick.reset();
             }
-            // KeepAlive heartbeat — fires every 5s. Resets when we send audio
-            // because tokio::select! polls receivers in order each iteration.
+            // KeepAlive heartbeat — fires after 5s of no outgoing audio.
             _ = keepalive_tick.tick() => {
                 let ka = Message::Text(r#"{"type":"KeepAlive"}"#.to_string());
                 if let Err(e) = ws.send(ka).await {

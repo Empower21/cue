@@ -164,8 +164,10 @@ fn capture(max_edge: u32, source_id: Option<String>) -> anyhow::Result<String> {
     let (w, h) = (rgba.width(), rgba.height());
     let resized = if w.max(h) > max_edge {
         let scale = max_edge as f32 / w.max(h) as f32;
-        let nw = (w as f32 * scale) as u32;
-        let nh = (h as f32 * scale) as u32;
+        // .max(1): a degenerate monitor dimension (virtual/headless display
+        // can report 0) would otherwise pass 0 to resize(), which panics.
+        let nw = ((w as f32 * scale) as u32).max(1);
+        let nh = ((h as f32 * scale) as u32).max(1);
         let buffer: ImageBuffer<Rgba<u8>, Vec<u8>> =
             ImageBuffer::from_raw(w, h, rgba.into_raw())
                 .ok_or_else(|| anyhow::anyhow!("xcap returned unexpected buffer dimensions"))?;

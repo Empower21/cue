@@ -119,18 +119,25 @@ export function ContextLoader({ open, onClose }: Props) {
 
   const save = async () => {
     setSaving(true);
-    const cfg = await invoke<Config>('load_config');
-    await invoke('save_config', {
-      config: {
-        ...cfg,
-        job_description: jd,
-        resume,
-        role_context: role,
-        voice_sample: voice,
-      },
-    });
-    setSaving(false);
-    onClose();
+    try {
+      const cfg = await invoke<Config>('load_config');
+      await invoke('save_config', {
+        config: {
+          ...cfg,
+          job_description: jd,
+          resume,
+          role_context: role,
+          voice_sample: voice,
+        },
+      });
+      onClose();
+    } catch (err) {
+      // Surface the failure and let the user retry — without the catch a
+      // failed IPC call left the button stuck on "Saving…" forever.
+      setUploadError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

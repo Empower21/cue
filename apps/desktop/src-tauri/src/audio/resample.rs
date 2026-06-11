@@ -55,15 +55,28 @@ impl MonoResampler {
         self.pending_in.extend(mono_iter);
 
         let mut out = Vec::new();
-        let chunk = self.inner.input_frames_next();
-        while self.pending_in.len() >= chunk {
+        loop {
+            // Re-query the required block size each iteration — rubato's
+            // contract allows it to vary between process() calls.
+            let chunk = self.inner.input_frames_next();
+            if chunk == 0 || self.pending_in.len() < chunk {
+                break;
+            }
             let block: Vec<f32> = self.pending_in.drain(..chunk).collect();
-            let resampled = self.inner.process(&[block], None).expect("resampler block");
-            out.extend(
-                resampled[0]
-                    .iter()
-                    .map(|&s| (s.clamp(-1.0, 1.0) * i16::MAX as f32) as i16),
-            );
+            // Never panic here: this runs on cpal's realtime audio callback
+            // thread, where an unwind aborts the whole process. Dropping one
+            // frame on a rare resampler error is inaudible; crashing is not.
+            match self.inner.process(&[block], None) {
+                Ok(resampled) => out.extend(
+                    resampled[0]
+                        .iter()
+                        .map(|&s| (s.clamp(-1.0, 1.0) * i16::MAX as f32) as i16),
+                ),
+                Err(e) => {
+                    log::warn!("resampler block failed (frame dropped): {e}");
+                    break;
+                }
+            }
         }
         out
     }

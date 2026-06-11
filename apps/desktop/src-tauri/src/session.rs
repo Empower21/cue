@@ -18,35 +18,65 @@ use tokio::sync::mpsc;
 /// State held by Tauri's manage().
 pub struct SessionState {
     inner: Arc<Mutex<Option<RunningSession>>>,
-    /// Abort handle for the in-flight `ask`/`ask_with_image` task. New asks
-    /// abort the previous before spawning — defense in depth against the JS
-    /// side accidentally letting two clicks through, which produces token-
-    /// interleaved garbage in the UI. Cleared by the task itself when done.
-    active_ask: Arc<Mutex<Option<tokio::task::AbortHandle>>>,
+    /// Guards the async gap in `start_capture` between the "already running"
+    /// check and the state write. Without it, two concurrent start calls both
+    /// pass the check, open duplicate Deepgram sessions + audio streams, and
+    /// the loser's session leaks unreachable.
+    starting: Arc<std::sync::atomic::AtomicBool>,
+    /// In-flight `ask`/`ask_with_image` slot. Generation-counted: a finished
+    /// task only clears the slot if it still OWNS it. The old design cleared
+    /// unconditionally, so a slow task finishing late could wipe a NEWER
+    /// task's abort handle — after which nothing could abort that newer
+    /// stream and a third ask would produce two concurrent token streams
+    /// (interleaved garbage in one answer card).
+    active_ask: Arc<Mutex<AskSlot>>,
+}
+
+#[derive(Default)]
+pub struct AskSlot {
+    gen: u64,
+    handle: Option<tokio::task::AbortHandle>,
 }
 
 impl SessionState {
     pub fn new() -> Self {
         Self {
             inner: Arc::new(Mutex::new(None)),
-            active_ask: Arc::new(Mutex::new(None)),
+            starting: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            active_ask: Arc::new(Mutex::new(AskSlot::default())),
         }
     }
 
-    /// Abort the previous ask task (if any) and store the new abort handle.
-    /// Call this immediately before spawning a new ask task.
-    pub fn replace_ask(&self, handle: tokio::task::AbortHandle) {
+    /// Abort any in-flight ask BEFORE spawning the replacement, and claim a
+    /// new generation. Aborting first (rather than after spawn, as before)
+    /// closes the window where old and new tasks streamed concurrently.
+    pub fn begin_ask(&self) -> u64 {
         let mut slot = self.active_ask.lock();
-        if let Some(prev) = slot.take() {
+        if let Some(prev) = slot.handle.take() {
             prev.abort();
         }
-        *slot = Some(handle);
+        slot.gen += 1;
+        slot.gen
     }
 
-    /// Clear the slot when the task naturally finishes. Safe to call even if
-    /// another task has already replaced ours.
-    pub fn clear_ask(&self) {
-        *self.active_ask.lock() = None;
+    /// Store the freshly spawned task's abort handle — unless a newer ask
+    /// already claimed the slot, in which case this task is stale: abort it.
+    pub fn store_ask(&self, gen: u64, handle: tokio::task::AbortHandle) {
+        let mut slot = self.active_ask.lock();
+        if slot.gen == gen {
+            slot.handle = Some(handle);
+        } else {
+            handle.abort();
+        }
+    }
+}
+
+/// Called by the ask task itself on natural completion. Clears the slot only
+/// if this task's generation still owns it.
+fn finish_ask(slot: &Mutex<AskSlot>, gen: u64) {
+    let mut s = slot.lock();
+    if s.gen == gen {
+        s.handle = None;
     }
 }
 
@@ -64,6 +94,10 @@ struct RunningSession {
     /// Bounded to TRANSCRIPT_BUFFER_MAX entries so the cache stays warm without
     /// unbounded growth.
     pub transcript_buffer: Arc<Mutex<VecDeque<TranscriptTurn>>>,
+    /// Every task spawned for this session (dispatcher, STT pumps,
+    /// forwarders). Aborted in stop_capture so a stop→start cycle can never
+    /// leave ghost tasks emitting transcript events into the new session.
+    tasks: Vec<tokio::task::JoinHandle<()>>,
 }
 
 const TRANSCRIPT_BUFFER_MAX: usize = 10;
@@ -106,6 +140,24 @@ pub async fn start_capture<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, SessionState>,
 ) -> Result<(), String> {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    // Claim the "starting" flag FIRST — this closes the TOCTOU gap where two
+    // concurrent start calls both see inner==None, then both open Deepgram
+    // sessions + audio streams and race to the state write (loser leaks).
+    if state.starting.swap(true, Ordering::SeqCst) {
+        return Err("capture already starting".into());
+    }
+    // RAII: clear the flag on every exit path (error or success). On success
+    // `inner` is Some before the guard drops, so the is_some() check below
+    // takes over as the gate.
+    struct ClearOnDrop(Arc<AtomicBool>);
+    impl Drop for ClearOnDrop {
+        fn drop(&mut self) {
+            self.0.store(false, Ordering::SeqCst);
+        }
+    }
+    let _starting_guard = ClearOnDrop(Arc::clone(&state.starting));
+
     // Check already-running without holding the lock across any await.
     {
         let guard = state.inner.lock();
@@ -156,7 +208,7 @@ pub async fn start_capture<R: Runtime>(
     // Audio dispatcher: voiced frames → per-channel sender, signal events → UI.
     // No mutex is held across any await point here.
     let app_handle = app.clone();
-    tokio::spawn(async move {
+    let dispatcher_task = tokio::spawn(async move {
         loop {
             tokio::select! {
                 Some(frame) = audio_rx.recv() => {
@@ -184,7 +236,7 @@ pub async fn start_capture<R: Runtime>(
     // Per-channel STT pumps: receive raw PCM and call submit() — no lock held.
     // On submit error (Deepgram channel closed), break out so we don't flood
     // the log; the WebSocket is dead and won't recover within this pump.
-    tokio::spawn(async move {
+    let mic_pump_task = tokio::spawn(async move {
         while let Some(samples) = mic_frame_rx.recv().await {
             if let Err(e) = mic_session.submit(&samples).await {
                 log::warn!("mic stt submit failed, closing pump: {e}");
@@ -193,7 +245,7 @@ pub async fn start_capture<R: Runtime>(
         }
         log::info!("mic STT pump exiting");
     });
-    tokio::spawn(async move {
+    let sys_pump_task = tokio::spawn(async move {
         while let Some(samples) = sys_frame_rx.recv().await {
             if let Err(e) = sys_session.submit(&samples).await {
                 log::warn!("sys stt submit failed, closing pump: {e}");
@@ -209,8 +261,10 @@ pub async fn start_capture<R: Runtime>(
         Arc::new(Mutex::new(VecDeque::with_capacity(TRANSCRIPT_BUFFER_MAX)));
 
     // Forward STT events to the frontend AND maintain the rolling buffer.
-    spawn_stt_forwarder(app.clone(), mic_events, Arc::clone(&transcript_buffer));
-    spawn_stt_forwarder(app.clone(), sys_events, Arc::clone(&transcript_buffer));
+    let mic_fwd_task =
+        spawn_stt_forwarder(app.clone(), mic_events, Arc::clone(&transcript_buffer));
+    let sys_fwd_task =
+        spawn_stt_forwarder(app.clone(), sys_events, Arc::clone(&transcript_buffer));
 
     // Store into state — lock is acquired and immediately released (no await after).
     {
@@ -219,6 +273,13 @@ pub async fn start_capture<R: Runtime>(
             capture,
             cancel: cancel_tx,
             transcript_buffer,
+            tasks: vec![
+                dispatcher_task,
+                mic_pump_task,
+                sys_pump_task,
+                mic_fwd_task,
+                sys_fwd_task,
+            ],
         });
     } // guard dropped here
 
@@ -233,7 +294,7 @@ fn spawn_stt_forwarder<R: Runtime>(
     app: AppHandle<R>,
     mut rx: mpsc::Receiver<SttEvent>,
     buffer: Arc<Mutex<VecDeque<TranscriptTurn>>>,
-) {
+) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         while let Some(ev) = rx.recv().await {
             match ev {
@@ -268,7 +329,7 @@ fn spawn_stt_forwarder<R: Runtime>(
                 }
             }
         }
-    });
+    })
 }
 
 #[tauri::command]
@@ -283,7 +344,14 @@ pub async fn stop_capture(state: State<'_, SessionState>) -> Result<(), String> 
         return Ok(());
     };
     let _ = s.cancel.send(());
-    s.capture.stop().await.map_err(|e| e.to_string())?;
+    let stop_result = s.capture.stop().await.map_err(|e| e.to_string());
+    // Belt and braces: the cancel→drop cascade tears the tasks down on its
+    // own, but abort() makes it immediate so a quick stop→start can never
+    // race ghost tasks from the old session into the new transcript.
+    for task in s.tasks {
+        task.abort();
+    }
+    stop_result?;
     log::info!("session stopped");
     Ok(())
 }
@@ -405,6 +473,11 @@ pub async fn ask<R: Runtime>(
     let request_for_fallback = request.clone();
     let active_for_clear = state.active_ask.clone();
 
+    // Abort the previous ask BEFORE spawning the new one — the old order
+    // (spawn, then replace) left a window where both tasks streamed tokens
+    // into the same answer card.
+    let ask_gen = state.begin_ask();
+
     let join = tokio::spawn(async move {
         match primary.stream(request).await {
             Ok(rx) => {
@@ -423,15 +496,12 @@ pub async fn ask<R: Runtime>(
                 fallback(app_for_orchestrator, request_for_fallback).await;
             }
         }
-        // Task finished naturally — clear the slot so a re-spawn doesn't
-        // try to abort an already-completed handle (no-op but tidier).
-        *active_for_clear.lock() = None;
+        // Task finished naturally — release the slot, but ONLY if we still
+        // own it (a newer ask may have claimed it while we were finishing).
+        finish_ask(&active_for_clear, ask_gen);
     });
 
-    // Replace any prior in-flight task. If a click slipped past the JS
-    // guard, the previous task gets aborted before this one writes any
-    // tokens, guaranteeing only one stream ever reaches the UI.
-    state.replace_ask(join.abort_handle());
+    state.store_ask(ask_gen, join.abort_handle());
 
     Ok(())
 }
@@ -625,6 +695,9 @@ pub async fn ask_with_image<R: Runtime>(
     let request_for_fallback = request.clone();
     let active_for_clear = state.active_ask.clone();
 
+    // Same abort-before-spawn ordering as `ask` — see comment there.
+    let ask_gen = state.begin_ask();
+
     let join = tokio::spawn(async move {
         match primary.stream(request).await {
             Ok(rx) => {
@@ -659,10 +732,10 @@ pub async fn ask_with_image<R: Runtime>(
                 );
             }
         }
-        *active_for_clear.lock() = None;
+        finish_ask(&active_for_clear, ask_gen);
     });
 
-    state.replace_ask(join.abort_handle());
+    state.store_ask(ask_gen, join.abort_handle());
 
     Ok(())
 }

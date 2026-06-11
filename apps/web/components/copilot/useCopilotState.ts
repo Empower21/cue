@@ -64,10 +64,25 @@ export function useCopilotState() {
   // collide across the lifetime of a session.
   const interimCounter = useRef(0);
   const finalCounter = useRef(0);
+  // In-flight /api/ask stream. A new ask() aborts the previous one — without
+  // this, two concurrent readers both append tokens into the same answer
+  // state and the card shows interleaved/doubled text.
+  const askAbort = useRef<AbortController | null>(null);
+  // Latest-value refs so ask() can read fresh config/transcript without
+  // depending on them — keeps ask()'s identity stable across renders so the
+  // auto-mode effect in page.tsx doesn't re-evaluate on every keystroke in
+  // the Settings/Context drawers.
+  const configRef = useRef(config);
+  configRef.current = config;
+  const transcriptRef = useRef(transcript);
+  transcriptRef.current = transcript;
 
   useEffect(() => {
     setConfigState(loadConfig());
   }, []);
+
+  // Abort any in-flight answer stream on unmount.
+  useEffect(() => () => askAbort.current?.abort(), []);
 
   const updateConfig = useCallback((partial: Partial<WebCopilotConfig>) => {
     setConfigState((prev) => {
@@ -261,64 +276,76 @@ export function useCopilotState() {
 
   useEffect(() => () => stop(), [stop]);
 
-  const ask = useCallback(
-    async (trigger: string, imageB64?: string) => {
-      setError(null);
-      setAnswer({ text: '', done: false });
-      // Build the rolling context for the model. Two things keep answers
-      // tight and on-topic:
-      //   1. Drop any final whose text IS the trigger — otherwise the model
-      //      sees the question once here and again as `## Trigger`, and tends
-      //      to echo it back. (This was the main source of "duplicated"
-      //      answers.)
-      //   2. Keep only the last 8 finals. Older utterances are usually stale
-      //      and pull the answer off the current topic.
-      const norm = (s: string) => s.trim().toLowerCase();
-      const triggerKey = norm(trigger);
-      const finals = transcript
-        .filter((u) => u.isFinal && norm(u.text) !== triggerKey)
-        .slice(-8)
-        .map((u) => ({ channel: u.channel, text: u.text }));
-      const headers: Record<string, string> = { 'content-type': 'application/json' };
-      // Authorization header is optional — server falls back to ANTHROPIC_API_KEY.
-      if (config.anthropicKey?.trim()) {
-        headers.authorization = `Bearer ${config.anthropicKey.trim()}`;
-      }
-      let resp: Response;
-      try {
-        resp = await fetch('/api/ask', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            mode: config.purpose ?? 'interview',
-            trigger,
-            jd: config.jd,
-            resume: config.resume,
-            roleContext: config.roleContext,
-            voiceSample: config.voiceSample,
-            language: config.language,
-            transcript: finals,
-            imageB64,
-          } as const),
-        });
-      } catch (err) {
-        setAnswer({
-          text: '',
-          done: true,
-          error: err instanceof Error ? err.message : String(err),
-        });
-        return;
-      }
-      if (!resp.ok || !resp.body) {
-        const msg = await resp.text();
-        setAnswer({ text: '', done: true, error: msg || `HTTP ${resp.status}` });
-        return;
-      }
+  const ask = useCallback(async (trigger: string, imageB64?: string) => {
+    // Supersede any in-flight stream. The aborted reader throws AbortError
+    // in its read loop and exits; the `ac !== askAbort.current` guards below
+    // make any of its already-queued state updates no-ops.
+    askAbort.current?.abort();
+    const ac = new AbortController();
+    askAbort.current = ac;
+    const live = () => askAbort.current === ac && !ac.signal.aborted;
 
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = '';
-      while (true) {
+    const config = configRef.current;
+    setError(null);
+    setAnswer({ text: '', done: false });
+    // Build the rolling context for the model. Two things keep answers
+    // tight and on-topic:
+    //   1. Drop any final whose text IS the trigger — otherwise the model
+    //      sees the question once here and again as `## Trigger`, and tends
+    //      to echo it back. (This was the main source of "duplicated"
+    //      answers.)
+    //   2. Keep only the last 8 finals. Older utterances are usually stale
+    //      and pull the answer off the current topic.
+    const norm = (s: string) => s.trim().toLowerCase();
+    const triggerKey = norm(trigger);
+    const finals = transcriptRef.current
+      .filter((u) => u.isFinal && norm(u.text) !== triggerKey)
+      .slice(-8)
+      .map((u) => ({ channel: u.channel, text: u.text }));
+    const headers: Record<string, string> = { 'content-type': 'application/json' };
+    // Authorization header is optional — server falls back to ANTHROPIC_API_KEY.
+    if (config.anthropicKey?.trim()) {
+      headers.authorization = `Bearer ${config.anthropicKey.trim()}`;
+    }
+    let resp: Response;
+    try {
+      resp = await fetch('/api/ask', {
+        method: 'POST',
+        headers,
+        signal: ac.signal,
+        body: JSON.stringify({
+          mode: config.purpose ?? 'interview',
+          trigger,
+          jd: config.jd,
+          resume: config.resume,
+          roleContext: config.roleContext,
+          voiceSample: config.voiceSample,
+          language: config.language,
+          transcript: finals,
+          imageB64,
+        } as const),
+      });
+    } catch (err) {
+      if (!live()) return;
+      setAnswer({
+        text: '',
+        done: true,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return;
+    }
+    if (!resp.ok || !resp.body) {
+      const msg = await resp.text();
+      if (!live()) return;
+      setAnswer({ text: '', done: true, error: msg || `HTTP ${resp.status}` });
+      return;
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    try {
+      while (live()) {
         const { value, done } = await reader.read();
         if (done) break;
         buf += decoder.decode(value, { stream: true });
@@ -329,6 +356,7 @@ export function useCopilotState() {
           const line = block.split('\n').find((l) => l.startsWith('data: '));
           if (!line) continue;
           const json = line.slice(6);
+          if (!live()) return;
           try {
             const evt = JSON.parse(json) as
               | { type: 'token'; text: string }
@@ -349,9 +377,16 @@ export function useCopilotState() {
           }
         }
       }
-    },
-    [config, transcript],
-  );
+    } catch (err) {
+      // AbortError from a superseding ask() — exit quietly.
+      if (!live()) return;
+      setAnswer((prev) => ({
+        ...prev,
+        done: true,
+        error: err instanceof Error ? err.message : String(err),
+      }));
+    }
+  }, []);
 
   const answerLatest = useCallback(() => {
     const last = [...transcript].reverse().find((u) => u.isFinal && u.channel === 'system');

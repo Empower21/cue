@@ -71,6 +71,10 @@ impl LlmProvider for AnthropicProvider {
             let mut stream = resp.bytes_stream().eventsource();
             let mut input_tokens = 0u32;
             let mut output_tokens = 0u32;
+            // stop_reason arrives in the `message_delta` event (under
+            // delta.stop_reason) — `message_stop` is just {"type":"message_stop"}.
+            // Likewise input_tokens lives in `message_start`, not message_delta.
+            let mut stop_reason = String::from("end_turn");
 
             while let Some(event) = stream.next().await {
                 let Ok(ev) = event else {
@@ -95,7 +99,21 @@ impl LlmProvider for AnthropicProvider {
                             }
                         }
                     }
+                    Some("message_start") => {
+                        if let Some(it) = parsed
+                            .pointer("/message/usage/input_tokens")
+                            .and_then(|v| v.as_u64())
+                        {
+                            input_tokens = it as u32;
+                        }
+                    }
                     Some("message_delta") => {
+                        if let Some(sr) = parsed
+                            .pointer("/delta/stop_reason")
+                            .and_then(|s| s.as_str())
+                        {
+                            stop_reason = sr.to_string();
+                        }
                         if let Some(usage) = parsed.get("usage") {
                             if let Some(it) = usage.get("input_tokens").and_then(|v| v.as_u64()) {
                                 input_tokens = it as u32;
@@ -106,11 +124,6 @@ impl LlmProvider for AnthropicProvider {
                         }
                     }
                     Some("message_stop") => {
-                        let stop_reason = parsed
-                            .get("stop_reason")
-                            .and_then(|s| s.as_str())
-                            .unwrap_or("end_turn")
-                            .to_string();
                         let _ = tx.send(LlmEvent::Done {
                             stop_reason,
                             input_tokens,

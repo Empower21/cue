@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 
 // Window-level signal that both useTranscript and useAnswer subscribe to.
@@ -67,6 +67,7 @@ export function useTranscript() {
 
   useEffect(() => {
     let interimCounter = 0;
+    let finalCounter = 0;
     const unlisten = listen<TranscriptEvent>('transcript_event', ({ payload }) => {
       setUtterances((prev) => {
         if (payload.kind === 'interim') {
@@ -95,8 +96,12 @@ export function useTranscript() {
           prev,
           (u: TranscriptUtterance) => !u.isFinal && u.channel === payload.channel,
         );
+        // Monotonic counter in the id: two finals on the same channel can
+        // legitimately share start_ms (fast back-to-back finalizations, or a
+        // session restart resetting timestamps to 0). Identical ids would
+        // collide as React keys and the second utterance would never render.
         const finalUtt: TranscriptUtterance = {
-          id: `final-${payload.start_ms}-${payload.channel}`,
+          id: `final-${payload.start_ms}-${payload.channel}-${++finalCounter}`,
           channel: payload.channel,
           text: payload.text,
           isFinal: true,
@@ -169,8 +174,10 @@ export function useAnswer() {
     };
   }, []);
 
-  // Reset is exposed so callers can clear before a new ask.
-  const reset = () => setAnswer({ text: '', done: true, fallback: false });
+  // Reset is exposed so callers can clear before a new ask. Memoized so
+  // effects that list `reset` in their deps (OverlayPanel's auto-mode
+  // trigger) don't re-run on every streamed token.
+  const reset = useCallback(() => setAnswer({ text: '', done: true, fallback: false }), []);
 
   return { answer, reset };
 }

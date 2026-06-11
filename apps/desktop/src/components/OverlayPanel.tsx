@@ -493,11 +493,16 @@ export function OverlayPanel() {
              this costs nothing in the empty case. */}
           <div className="space-y-2">
             <AnswerCard answer={answer} />
+            {/* Key by ORIGINAL index (stable per answer for the session).
+               The reversed index shifted on every append, forcing React to
+               unmount/remount every existing card whenever a new answer
+               arrived; text-prefix keys also collided when two answers
+               started with the same 20 chars, silently dropping one. */}
             {autoAnswers
               .slice()
               .reverse()
               .map((a, i) => (
-                <AnswerCard key={`${i}-${a.text.slice(0, 20)}`} answer={a} />
+                <AnswerCard key={autoAnswers.length - 1 - i} answer={a} />
               ))}
           </div>
 

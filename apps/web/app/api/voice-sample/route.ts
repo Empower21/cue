@@ -71,7 +71,11 @@ function stripDocxXml(xml: string): string {
   while (i < xml.length) {
     if (xml.startsWith('<w:p', i)) {
       if (out && !out.endsWith('\n')) out += '\n';
-      i = xml.indexOf('>', i) + 1;
+      const close = xml.indexOf('>', i);
+      // Malformed tag with no `>`: indexOf gives -1, and `-1 + 1 = 0` would
+      // reset the scan to position 0 — an infinite loop. Bail instead.
+      if (close === -1) break;
+      i = close + 1;
       continue;
     }
     if (xml.startsWith('</w:p>', i)) {
@@ -81,6 +85,9 @@ function stripDocxXml(xml: string): string {
     }
     if (xml.startsWith('<w:t', i)) {
       const close = xml.indexOf('>', i);
+      // close === -1 would make the slice below start at 0 and swallow all
+      // preceding XML as "text". Abort on malformed input.
+      if (close === -1) break;
       const tEnd = xml.indexOf('</w:t>', close);
       if (tEnd === -1) break;
       out += decodeEntities(xml.slice(close + 1, tEnd));

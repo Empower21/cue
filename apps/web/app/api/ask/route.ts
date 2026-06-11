@@ -225,7 +225,7 @@ async function runHuggingFace({ token, systemText, contextBlock, trigger, transc
   const rolling = transcript
     .map((t) => `[${t.channel === 'mic' ? 'you' : 'them'}] ${t.text}`)
     .join('\n');
-  const prompt = `<s>[INST] ${systemText}\n\n${contextBlock}\n\n## Recent transcript\n${rolling}\n\n## Trigger\n${trigger} [/INST]`;
+  const prompt = `<s>[INST] ${systemText}${contextBlock ? `\n\n${contextBlock}` : ''}\n\n## Recent transcript\n${rolling}\n\n## Trigger\n${trigger} [/INST]`;
   try {
     const resp = await fetch(
       'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3',
