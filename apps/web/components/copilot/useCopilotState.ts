@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Language } from '@cue/shared';
 import {
+  appendMemory,
   clearContextOnly,
   loadConfig,
+  recentMemory,
   saveConfig,
   type WebCopilotConfig,
 } from '@/lib/storage';
@@ -307,6 +309,7 @@ export function useCopilotState() {
     if (config.anthropicKey?.trim()) {
       headers.authorization = `Bearer ${config.anthropicKey.trim()}`;
     }
+    const purpose = config.purpose ?? 'interview';
     let resp: Response;
     try {
       resp = await fetch('/api/ask', {
@@ -314,7 +317,7 @@ export function useCopilotState() {
         headers,
         signal: ac.signal,
         body: JSON.stringify({
-          mode: config.purpose ?? 'interview',
+          mode: purpose,
           trigger,
           jd: config.jd,
           resume: config.resume,
@@ -322,6 +325,9 @@ export function useCopilotState() {
           voiceSample: config.voiceSample,
           language: config.language,
           transcript: finals,
+          // Adaptive memory: recent Q&As from past sessions so the model
+          // builds on what it already told this user instead of starting cold.
+          memory: recentMemory(purpose, 6).map((m) => ({ q: m.q, a: m.a })),
           imageB64,
         } as const),
       });
@@ -344,6 +350,10 @@ export function useCopilotState() {
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let buf = '';
+    // Accumulated locally (in addition to React state) so the completed
+    // answer can be written to adaptive memory without re-reading state.
+    let fullText = '';
+    let hadError = false;
     try {
       while (live()) {
         const { value, done } = await reader.read();
@@ -364,12 +374,19 @@ export function useCopilotState() {
               | { type: 'fallback'; text: string }
               | { type: 'error'; reason: string };
             if (evt.type === 'token') {
+              fullText += evt.text;
               setAnswer((prev) => ({ text: prev.text + evt.text, done: false }));
             } else if (evt.type === 'done') {
               setAnswer((prev) => ({ ...prev, done: true }));
+              // Adaptive memory: remember the completed Q&A so future asks
+              // build on it instead of starting cold.
+              if (!hadError && fullText.trim()) {
+                appendMemory(purpose, trigger, fullText);
+              }
             } else if (evt.type === 'fallback') {
               setAnswer((prev) => ({ ...prev, fallback: true }));
             } else if (evt.type === 'error') {
+              hadError = true;
               setAnswer((prev) => ({ ...prev, done: true, error: evt.reason }));
             }
           } catch {

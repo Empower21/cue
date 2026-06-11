@@ -43,6 +43,26 @@ pub fn user_context_block(req: &LlmRequest) -> String {
     s.trim().to_string()
 }
 
+/// Adaptive-memory block: recent Q&As cue already answered for this user.
+/// Empty string when there is no memory yet. Sits in its own cacheable
+/// system block — it only changes when an answer completes, so it stays
+/// cache-warm across the rapid re-asks within a session.
+pub fn memory_block(req: &LlmRequest) -> String {
+    if req.memory.is_empty() {
+        return String::new();
+    }
+    let mut s = String::from(
+        "## Learned from past sessions\nAnswers cue already gave this user (oldest first). \
+         Stay consistent with them, never repeat their content verbatim, and build on them \
+         when a topic recurs. If a new answer would contradict an old one, prefer the new \
+         context but acknowledge the shift naturally.\n",
+    );
+    for m in &req.memory {
+        s.push_str(&format!("\nQ: {}\nA: {}\n", m.q, m.a));
+    }
+    s.trim().to_string()
+}
+
 pub fn rolling_transcript(req: &LlmRequest) -> String {
     // Skip any turn that IS the live trigger. The trigger is already sent
     // verbatim in the L4 block; including it again here makes the model echo

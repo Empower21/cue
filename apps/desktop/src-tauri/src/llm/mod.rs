@@ -23,6 +23,10 @@ pub struct LlmRequest {
     /// language STT produced.
     pub language: Option<String>,
     pub transcript_window: Vec<TranscriptTurn>,
+    /// Adaptive memory: recent Q&As from past sessions (oldest first). Lets
+    /// the model stay consistent across uses instead of starting cold — see
+    /// crate::memory.
+    pub memory: Vec<MemoryTurn>,
     pub trigger: String,
     /// Base64-encoded PNG (no data: prefix). When present, the Anthropic
     /// provider sends a multimodal message and the trigger becomes the prompt
@@ -42,6 +46,13 @@ pub enum Mode {
 pub struct TranscriptTurn {
     pub channel: String, // "you" | "them"
     pub text: String,
+}
+
+/// One remembered Q&A from a past session (adaptive memory).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MemoryTurn {
+    pub q: String,
+    pub a: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

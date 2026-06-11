@@ -2,6 +2,7 @@ mod audio;
 mod config;
 mod documents;
 mod llm;
+mod memory;
 mod overlay;
 mod question_detector;
 mod screenshot;

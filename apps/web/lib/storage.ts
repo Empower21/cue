@@ -80,3 +80,66 @@ export function clearConfig() {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(STORAGE_KEY);
 }
+
+// ---------------------------------------------------------------------------
+// Adaptive memory — cue learns from each use instead of staying static.
+// Every completed Q&A is stored (capped); future asks include the most recent
+// entries for the active purpose so answers stay consistent across sessions
+// and build on earlier ones when topics recur. Mirrors the desktop's
+// %APPDATA%\cue\memory.json. Never leaves the browser except inside the
+// prompt the user is already sending with their own key.
+// ---------------------------------------------------------------------------
+
+export interface MemoryEntry {
+  purpose: CopilotPurpose;
+  q: string;
+  a: string;
+  ts: number;
+}
+
+const MEMORY_KEY = 'cue.web.memory.v1';
+const MEMORY_MAX_ENTRIES = 30;
+const MEMORY_MAX_ANSWER_CHARS = 600;
+const MEMORY_MAX_QUESTION_CHARS = 300;
+
+export function loadMemory(): MemoryEntry[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(MEMORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? (parsed as MemoryEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function appendMemory(purpose: CopilotPurpose, q: string, a: string) {
+  if (typeof window === 'undefined') return;
+  const qt = q.trim().slice(0, MEMORY_MAX_QUESTION_CHARS);
+  const at = a.trim().slice(0, MEMORY_MAX_ANSWER_CHARS);
+  if (!qt || !at) return;
+  try {
+    const entries = loadMemory();
+    entries.push({ purpose, q: qt, a: at, ts: Date.now() });
+    window.localStorage.setItem(
+      MEMORY_KEY,
+      JSON.stringify(entries.slice(-MEMORY_MAX_ENTRIES)),
+    );
+  } catch {
+    // Quota or serialization failure — memory is an enhancement, never fatal.
+  }
+}
+
+/// Most recent `n` entries for `purpose`, oldest first (reads naturally in
+/// the prompt).
+export function recentMemory(purpose: CopilotPurpose, n: number): MemoryEntry[] {
+  return loadMemory()
+    .filter((e) => e.purpose === purpose)
+    .slice(-n);
+}
+
+export function clearMemory() {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(MEMORY_KEY);
+}

@@ -372,8 +372,16 @@ pub async fn load_config() -> Result<config::Config, String> {
 
 use crate::llm::{
     anthropic::AnthropicProvider, huggingface::HuggingFaceProvider, LlmEvent, LlmProvider,
-    LlmRequest, Mode,
+    LlmRequest, MemoryTurn, Mode,
 };
+
+/// Adaptive memory for the prompt: the most recent past Q&As for this purpose.
+fn memory_turns(mode: &str) -> Vec<MemoryTurn> {
+    crate::memory::recent(mode, 6)
+        .into_iter()
+        .map(|e| MemoryTurn { q: e.q, a: e.a })
+        .collect()
+}
 
 // Compile-time defaults (option_env! = None if unset, no build failure). This
 // lets us ship MSI binaries WITHOUT baking any key — public redistribution-safe.
@@ -449,6 +457,7 @@ pub async fn ask<R: Runtime>(
         voice_sample: cfg.voice_sample.clone(),
         language: cfg.language.clone(),
         transcript_window,
+        memory: memory_turns(&mode),
         trigger,
         image_b64: None,
     };
@@ -472,6 +481,8 @@ pub async fn ask<R: Runtime>(
     let app_for_orchestrator = app.clone();
     let request_for_fallback = request.clone();
     let active_for_clear = state.active_ask.clone();
+    let trigger_for_memory = request.trigger.clone();
+    let mode_for_memory = mode.clone();
 
     // Abort the previous ask BEFORE spawning the new one — the old order
     // (spawn, then replace) left a window where both tasks streamed tokens
@@ -479,23 +490,28 @@ pub async fn ask<R: Runtime>(
     let ask_gen = state.begin_ask();
 
     let join = tokio::spawn(async move {
-        match primary.stream(request).await {
+        let answer_text = match primary.stream(request).await {
             Ok(rx) => {
-                let outcome = forward_stream_with_first_token_timeout(
+                let (outcome, text) = forward_stream_with_first_token_timeout(
                     app_for_orchestrator.clone(),
                     rx,
                     std::time::Duration::from_millis(FALLBACK_TIMEOUT_MS),
                 )
                 .await;
                 if matches!(outcome, StreamOutcome::Timeout | StreamOutcome::ImmediateError) {
-                    fallback(app_for_orchestrator, request_for_fallback).await;
+                    fallback(app_for_orchestrator, request_for_fallback).await
+                } else {
+                    text
                 }
             }
             Err(e) => {
                 log::warn!("Anthropic stream() returned err: {e}");
-                fallback(app_for_orchestrator, request_for_fallback).await;
+                fallback(app_for_orchestrator, request_for_fallback).await
             }
-        }
+        };
+        // Adaptive memory: remember the completed Q&A so future asks build on
+        // it instead of starting cold. Empty text (error paths) is skipped.
+        crate::memory::append(&mode_for_memory, &trigger_for_memory, &answer_text);
         // Task finished naturally — release the slot, but ONLY if we still
         // own it (a newer ask may have claimed it while we were finishing).
         finish_ask(&active_for_clear, ask_gen);
@@ -518,17 +534,20 @@ enum StreamOutcome {
     ImmediateError,
 }
 
+/// Returns the outcome plus the full accumulated answer text — the caller
+/// persists it to adaptive memory on success.
 async fn forward_stream_with_first_token_timeout<R: Runtime>(
     app: AppHandle<R>,
     mut rx: mpsc::Receiver<LlmEvent>,
     first_token_timeout: std::time::Duration,
-) -> StreamOutcome {
+) -> (StreamOutcome, String) {
+    let mut answer_text = String::new();
     // Wait for the first event with a timeout. If we don't see ANY event
     // (token, error, done) within the window, treat as timeout and fall back.
     let first = match tokio::time::timeout(first_token_timeout, rx.recv()).await {
         Ok(Some(ev)) => ev,
-        Ok(None) => return StreamOutcome::ImmediateError, // channel closed without events
-        Err(_) => return StreamOutcome::Timeout,
+        Ok(None) => return (StreamOutcome::ImmediateError, answer_text), // channel closed without events
+        Err(_) => return (StreamOutcome::Timeout, answer_text),
     };
 
     // Handle the first event. If it's an error before any token, fall back.
@@ -536,6 +555,7 @@ async fn forward_stream_with_first_token_timeout<R: Runtime>(
     match first {
         LlmEvent::Token { text } => {
             delivered_any_token = true;
+            answer_text.push_str(&text);
             let _ = app.emit(
                 "answer_event",
                 AnswerEvent { kind: "token".into(), text: Some(text), reason: None },
@@ -554,14 +574,14 @@ async fn forward_stream_with_first_token_timeout<R: Runtime>(
                     reason: None,
                 },
             );
-            return StreamOutcome::Streamed;
+            return (StreamOutcome::Streamed, answer_text);
         }
         LlmEvent::Error { reason } => {
             let _ = app.emit(
                 "answer_event",
                 AnswerEvent { kind: "error".into(), text: None, reason: Some(reason) },
             );
-            return StreamOutcome::ImmediateError;
+            return (StreamOutcome::ImmediateError, answer_text);
         }
     }
 
@@ -571,6 +591,7 @@ async fn forward_stream_with_first_token_timeout<R: Runtime>(
         match ev {
             LlmEvent::Token { text } => {
                 delivered_any_token = true;
+                answer_text.push_str(&text);
                 let _ = app.emit(
                     "answer_event",
                     AnswerEvent { kind: "token".into(), text: Some(text), reason: None },
@@ -587,7 +608,7 @@ async fn forward_stream_with_first_token_timeout<R: Runtime>(
                         reason: None,
                     },
                 );
-                return StreamOutcome::Streamed;
+                return (StreamOutcome::Streamed, answer_text);
             }
             LlmEvent::Error { reason } => {
                 let _ = app.emit(
@@ -595,20 +616,28 @@ async fn forward_stream_with_first_token_timeout<R: Runtime>(
                     AnswerEvent { kind: "error".into(), text: None, reason: Some(reason) },
                 );
                 // Mid-stream error — already showed user partial content, do not
-                // restart with fallback (would produce duplicate output).
-                return StreamOutcome::Streamed;
+                // restart with fallback (would produce duplicate output). Don't
+                // memorize a truncated answer either: clear the text.
+                return (StreamOutcome::Streamed, String::new());
             }
         }
     }
 
-    if delivered_any_token { StreamOutcome::Streamed } else { StreamOutcome::ImmediateError }
+    if delivered_any_token {
+        (StreamOutcome::Streamed, answer_text)
+    } else {
+        (StreamOutcome::ImmediateError, answer_text)
+    }
 }
 
 /// Forward every remaining event from `rx` to the frontend verbatim.
-async fn forward_stream<R: Runtime>(app: AppHandle<R>, mut rx: mpsc::Receiver<LlmEvent>) {
+/// Returns the accumulated answer text (empty when the stream errored).
+async fn forward_stream<R: Runtime>(app: AppHandle<R>, mut rx: mpsc::Receiver<LlmEvent>) -> String {
+    let mut answer_text = String::new();
     while let Some(ev) = rx.recv().await {
         match ev {
             LlmEvent::Token { text } => {
+                answer_text.push_str(&text);
                 let _ = app.emit(
                     "answer_event",
                     AnswerEvent { kind: "token".into(), text: Some(text), reason: None },
@@ -625,17 +654,18 @@ async fn forward_stream<R: Runtime>(app: AppHandle<R>, mut rx: mpsc::Receiver<Ll
                         reason: None,
                     },
                 );
-                return;
+                return answer_text;
             }
             LlmEvent::Error { reason } => {
                 let _ = app.emit(
                     "answer_event",
                     AnswerEvent { kind: "error".into(), text: None, reason: Some(reason) },
                 );
-                return;
+                return String::new();
             }
         }
     }
+    answer_text
 }
 
 /// Screenshot-driven vision request. Mirrors `ask` but ships an image_b64 to
@@ -671,6 +701,7 @@ pub async fn ask_with_image<R: Runtime>(
         voice_sample: cfg.voice_sample.clone(),
         language: cfg.language.clone(),
         transcript_window,
+        memory: memory_turns(&mode),
         trigger,
         image_b64: Some(image_b64),
     };
@@ -694,14 +725,16 @@ pub async fn ask_with_image<R: Runtime>(
     let app_for_orchestrator = app.clone();
     let request_for_fallback = request.clone();
     let active_for_clear = state.active_ask.clone();
+    let trigger_for_memory = request.trigger.clone();
+    let mode_for_memory = mode.clone();
 
     // Same abort-before-spawn ordering as `ask` — see comment there.
     let ask_gen = state.begin_ask();
 
     let join = tokio::spawn(async move {
-        match primary.stream(request).await {
+        let answer_text = match primary.stream(request).await {
             Ok(rx) => {
-                let outcome = forward_stream_with_first_token_timeout(
+                let (outcome, text) = forward_stream_with_first_token_timeout(
                     app_for_orchestrator.clone(),
                     rx,
                     // Vision tokenisation is slow — use the longer timeout so
@@ -717,7 +750,9 @@ pub async fn ask_with_image<R: Runtime>(
                         "(Screenshot could not be analysed by the fallback model — answer based on transcript only.) {}",
                         fallback_req.trigger
                     );
-                    fallback(app_for_orchestrator, fallback_req).await;
+                    fallback(app_for_orchestrator, fallback_req).await
+                } else {
+                    text
                 }
             }
             Err(e) => {
@@ -730,8 +765,10 @@ pub async fn ask_with_image<R: Runtime>(
                         reason: Some(format!("Vision call failed: {e}")),
                     },
                 );
+                String::new()
             }
-        }
+        };
+        crate::memory::append(&mode_for_memory, &trigger_for_memory, &answer_text);
         finish_ask(&active_for_clear, ask_gen);
     });
 
@@ -740,7 +777,9 @@ pub async fn ask_with_image<R: Runtime>(
     Ok(())
 }
 
-async fn fallback<R: Runtime>(app: AppHandle<R>, request: LlmRequest) {
+/// Returns the fallback's answer text (empty on failure) so callers can
+/// persist it to adaptive memory.
+async fn fallback<R: Runtime>(app: AppHandle<R>, request: LlmRequest) -> String {
     let _ = app.emit(
         "answer_event",
         AnswerEvent {
@@ -761,13 +800,11 @@ async fn fallback<R: Runtime>(app: AppHandle<R>, request: LlmRequest) {
                 ),
             },
         );
-        return;
+        return String::new();
     }
     let provider = HuggingFaceProvider::new(hf_token);
     match provider.stream(request).await {
-        Ok(rx) => {
-            forward_stream(app, rx).await;
-        }
+        Ok(rx) => forward_stream(app, rx).await,
         Err(e) => {
             let _ = app.emit(
                 "answer_event",
@@ -777,6 +814,7 @@ async fn fallback<R: Runtime>(app: AppHandle<R>, request: LlmRequest) {
                     reason: Some(format!("fallback failed: {e}")),
                 },
             );
+            String::new()
         }
     }
 }

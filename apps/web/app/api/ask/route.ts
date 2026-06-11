@@ -41,6 +41,9 @@ interface AskBody {
   voiceSample?: string;
   language?: string;
   transcript?: { channel: 'mic' | 'system'; text: string }[];
+  /// Adaptive memory: recent Q&As from this user's past sessions (oldest
+  /// first). Stored client-side; the server just renders it into the prompt.
+  memory?: { q: string; a: string }[];
   imageB64?: string;
 }
 
@@ -277,6 +280,20 @@ function buildContext(body: AskBody): string {
     parts.push(
       `## Voice & tone reference (the user's own writing)\nMatch the cadence, vocabulary, hedging, and idioms in this sample. Do not copy phrases verbatim — internalise the voice.\n\n${body.voiceSample.trim()}`,
     );
+  }
+  // Adaptive memory — answers cue already gave this user in past sessions.
+  // Caps mirror the client (defense in depth against oversized payloads).
+  const memory = (body.memory ?? []).slice(-6);
+  if (memory.length > 0) {
+    const lines = memory
+      .filter((m) => m?.q?.trim() && m?.a?.trim())
+      .map((m) => `Q: ${m.q.trim().slice(0, 300)}\nA: ${m.a.trim().slice(0, 600)}`)
+      .join('\n\n');
+    if (lines) {
+      parts.push(
+        `## Learned from past sessions\nAnswers cue already gave this user (oldest first). Stay consistent with them, never repeat their content verbatim, and build on them when a topic recurs. If a new answer would contradict an old one, prefer the new context but acknowledge the shift naturally.\n\n${lines}`,
+      );
+    }
   }
   return parts.join('\n\n');
 }

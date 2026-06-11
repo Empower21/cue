@@ -166,6 +166,17 @@ fn build_payload(req: &LlmRequest, max_tokens: u32) -> Value {
         }));
     }
 
+    // Adaptive memory tier — recent Q&As from past sessions. Changes only
+    // when an answer completes, so it caches well within a session.
+    let memory_block = prompts::memory_block(req);
+    if !memory_block.is_empty() {
+        system_blocks.push(json!({
+            "type": "text",
+            "text": memory_block,
+            "cache_control": { "type": "ephemeral" }
+        }));
+    }
+
     let mut user_content = Vec::new();
     let rolling = prompts::rolling_transcript(req);
     if !rolling.is_empty() {
